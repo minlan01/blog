@@ -1,0 +1,10 @@
+fastapi[standard]
+sqlalchemy
+pydantic-settings
+python-jose[cryptography]
+bcrypt
+httpx
+alembic
+pytest
+slowapi
+pymysql

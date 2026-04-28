@@ -1,0 +1,188 @@
+/* ========================================
+   Code Syntax Highlighting
+   Frosted Glass Dark
+   ======================================== */
+
+.hljs-pre {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  overflow-x: auto;
+  margin: var(--space-lg) 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  position: relative;
+  backdrop-filter: var(--glass-surface-blur) saturate(var(--glass-surface-saturate));
+  -webkit-backdrop-filter: var(--glass-surface-blur) saturate(var(--glass-surface-saturate));
+}
+
+.hljs-pre code {
+  font-family: inherit;
+  background: none;
+  padding: 0;
+  border: none;
+}
+
+/* Base */
+.hljs {
+  color: #dcdce8;
+}
+
+/* Keywords */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-type {
+  color: #c084fc;
+}
+
+/* Strings */
+.hljs-string,
+.hljs-template-variable,
+.hljs-addition {
+  color: #86efac;
+}
+
+/* Numbers */
+.hljs-number,
+.hljs-literal {
+  color: #fbbf24;
+}
+
+/* Comments */
+.hljs-comment,
+.hljs-quote {
+  color: #4a4a6a;
+  font-style: italic;
+}
+
+/* Function names */
+.hljs-title,
+.hljs-section {
+  color: #818cf8;
+}
+
+/* Variables / Attributes */
+.hljs-variable,
+.hljs-attr,
+.hljs-attribute {
+  color: #93a3e0;
+}
+
+/* Tags */
+.hljs-tag {
+  color: #f472b6;
+}
+
+/* Params */
+.hljs-params {
+  color: #a0a0be;
+}
+
+/* Meta / Decorators */
+.hljs-meta,
+.hljs-meta .hljs-keyword {
+  color: #fbbf24;
+}
+
+/* Deletion */
+.hljs-deletion {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+}
+
+/* Addition */
+.hljs-addition {
+  background: rgba(134, 239, 172, 0.06);
+}
+
+/* Emphasis */
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* Selection */
+.hljs-pre code::selection,
+.hljs-pre code *::selection {
+  background: rgba(129, 140, 248, 0.25);
+}
+
+/* ========================================
+   Light Theme — Syntax Highlighting
+   ======================================== */
+
+[data-theme="light"] .hljs-pre {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--glass-border);
+}
+
+[data-theme="light"] .hljs {
+  color: #1e1e2e;
+}
+
+[data-theme="light"] .hljs-keyword,
+[data-theme="light"] .hljs-selector-tag,
+[data-theme="light"] .hljs-built_in,
+[data-theme="light"] .hljs-type {
+  color: #7c3aed;
+}
+
+[data-theme="light"] .hljs-string,
+[data-theme="light"] .hljs-template-variable,
+[data-theme="light"] .hljs-addition {
+  color: #059669;
+}
+
+[data-theme="light"] .hljs-number,
+[data-theme="light"] .hljs-literal {
+  color: #d97706;
+}
+
+[data-theme="light"] .hljs-comment,
+[data-theme="light"] .hljs-quote {
+  color: #9ca3af;
+}
+
+[data-theme="light"] .hljs-title,
+[data-theme="light"] .hljs-section {
+  color: #4f46e5;
+}
+
+[data-theme="light"] .hljs-variable,
+[data-theme="light"] .hljs-attr,
+[data-theme="light"] .hljs-attribute {
+  color: #475569;
+}
+
+[data-theme="light"] .hljs-tag {
+  color: #db2777;
+}
+
+[data-theme="light"] .hljs-params {
+  color: #555570;
+}
+
+[data-theme="light"] .hljs-meta,
+[data-theme="light"] .hljs-meta .hljs-keyword {
+  color: #d97706;
+}
+
+[data-theme="light"] .hljs-deletion {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+[data-theme="light"] .hljs-addition {
+  background: rgba(5, 150, 105, 0.08);
+}
+
+[data-theme="light"] .hljs-pre code::selection,
+[data-theme="light"] .hljs-pre code *::selection {
+  background: rgba(217, 119, 6, 0.2);
+}

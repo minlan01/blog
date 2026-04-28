@@ -1,0 +1,58 @@
+from functools import cached_property
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    APP_NAME: str = "Personal Blog API"
+    API_V1_PREFIX: str = "/api/v1"
+    CORS_ORIGINS: str = "http://127.0.0.1:3710,http://localhost:3710"
+    SQLITE_DB_PATH: str = "blog.db"
+    MYSQL_HOST: str = "127.0.0.1"
+    MYSQL_PORT: int = 3715
+    MYSQL_USER: str = "root"
+    MYSQL_PASSWORD: str = "123456"
+    MYSQL_DATABASE: str = "blog"
+    LLM_BASE_URL: str = "http://localhost:2713"
+    LLM_TIMEOUT: int = 120
+    SECRET_KEY: str = "blog-secret-key-change-in-production"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
+    # SMTP Email
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USE_TLS: bool = True
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "noreply@blog.com"
+    FRONTEND_URL: str = "http://localhost:3710"
+
+    # GitHub OAuth
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
+    GITHUB_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/github/callback"
+
+    # Upload
+    MAX_UPLOAD_SIZE_MB: int = 5
+    UPLOAD_ALLOWED_TYPES: str = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @cached_property
+    def cors_origins_list(self) -> list[str]:
+        return [item.strip() for item in self.CORS_ORIGINS.split(",") if item.strip()]
+
+    @cached_property
+    def database_url(self) -> str:
+        return (
+            f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
+            f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
+            f"?charset=utf8mb4"
+        )
+
+    @cached_property
+    def upload_allowed_types_list(self) -> list[str]:
+        return [t.strip() for t in self.UPLOAD_ALLOWED_TYPES.split(",") if t.strip()]
+
+
+settings = Settings()
