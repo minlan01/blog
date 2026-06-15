@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { Category, FriendLink, PostDetail, PostSummary, SiteProfile, Tag } from '@/types/blog'
+import type { Category, FriendLink, PaginatedResponse, PostDetail, PostSummary, SiteProfile, Tag } from '@/types/blog'
 
 export async function getSiteProfile() {
   const { data } = await http.get<SiteProfile>('/site/profile')
@@ -7,7 +7,7 @@ export async function getSiteProfile() {
 }
 
 export async function getPosts(params?: { featured?: boolean; category?: string; tag?: string; search?: string; page?: number; per_page?: number }) {
-  const { data } = await http.get<PostSummary[]>('/posts', { params })
+  const { data } = await http.get<PaginatedResponse<PostSummary>>('/posts', { params })
   return data
 }
 

@@ -120,7 +120,7 @@ const router = createRouter({
           path: 'ai-chat',
           name: 'ai-chat',
           component: () => import('@/views/ChatView.vue'),
-          meta: { title: 'AI 对话', description: '与 AI 助手进行技术对话' },
+          meta: { title: 'AI 对话', requiresAuth: true, description: '与 AI 助手进行技术对话' },
         },
         {
           path: 'stats',
@@ -145,8 +145,7 @@ const router = createRouter({
 })
 
 // Auth guard
-router.beforeEach((to, _from, next) => {
-  // Use localStorage for persistence across reloads (needed for page refresh)
+router.beforeEach(async (to, _from, next) => {
   const token = localStorage.getItem('token')
 
   if (to.meta.requiresAuth && !token) {
@@ -154,25 +153,22 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
-  // Admin-only routes: check role from localStorage user data
   if (to.meta.requiresAdmin) {
+    if (!token) {
+      next({ name: 'login', query: { redirect: to.fullPath } })
+      return
+    }
     try {
-      const storedUser = localStorage.getItem('user')
-      if (storedUser) {
-        const user = JSON.parse(storedUser)
-        if (user.role !== 'super_admin') {
-          next({ name: 'home' })
-          return
-        }
-      } else if (token) {
-        // Token exists but user data not loaded yet — allow through,
-        // the component will handle the redirect if needed
-      } else {
-        next({ name: 'login', query: { redirect: to.fullPath } })
+      const { getProfile } = await import('@/api/auth')
+      const user = await getProfile()
+      if (user.role !== 'super_admin') {
+        next({ name: 'home' })
         return
       }
     } catch {
-      next({ name: 'home' })
+      localStorage.removeItem('token')
+      localStorage.removeItem('refresh_token')
+      next({ name: 'login', query: { redirect: to.fullPath } })
       return
     }
   }

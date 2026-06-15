@@ -27,8 +27,7 @@
           <p>选择一个模型，开始与 AI 对话</p>
         </div>
         <div
-          v-for="(msg, i) in messages"
-          :key="i"
+          v-for="(msg, i) in messages" :key="msg.id"
           class="chat__bubble"
           :class="[`chat__bubble--${msg.role}`]"
         >

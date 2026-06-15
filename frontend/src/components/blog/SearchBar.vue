@@ -6,6 +6,7 @@
       class="search-bar__input"
       type="text"
       placeholder="搜索文章..."
+      aria-label="搜索文章"
       @keyup.enter="$emit('search', query)"
     />
     <button class="search-bar__btn" @click="$emit('search', query)">

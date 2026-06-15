@@ -23,6 +23,7 @@ backend/*.db
 backend/blog.db
 backend/app.db
 backend/data/*.db
+backend/uploads/images/
 
 # Python
 *.pyc

@@ -11,6 +11,7 @@
         <div class="archive-page__skeleton" v-for="n in 4" :key="n"></div>
       </div>
 
+      <div v-else-if="loadError" class="archive-page__error">{{ loadError }}</div>
       <div v-else-if="allPosts.length" class="archive-page__timeline">
         <div
           v-for="year in groupedPosts"
@@ -63,6 +64,7 @@ import type { PostSummary } from '@/types/blog'
 
 const allPosts = ref<PostSummary[]>([])
 const loading = ref(true)
+const loadError = ref('')
 
 interface MonthGroup {
   key: string
@@ -111,10 +113,10 @@ function formatDate(dateStr: string) {
 
 onMounted(async () => {
   try {
-    const res = await getPosts()
+    const res = await getPosts({ per_page: 50 })
     allPosts.value = Array.isArray(res) ? res : (res as any)?.items || []
   } catch {
-    allPosts.value = []
+    loadError.value = '文章加载失败，请刷新页面重试'
   }
   loading.value = false
 })
@@ -289,6 +291,13 @@ onMounted(async () => {
   text-align: center;
   padding: var(--space-3xl);
   color: var(--color-text-muted);
+}
+
+.archive-page__error {
+  text-align: center;
+  padding: var(--space-3xl);
+  color: #ef4444;
+  font-size: 0.88rem;
 }
 
 @media (max-width: 768px) {

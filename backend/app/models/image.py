@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Integer, LargeBinary, String
@@ -12,8 +13,16 @@ class Image(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    file_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     size: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )
+
+    @property
+    def stored_path(self) -> str:
+        if self.file_path:
+            return os.path.join("uploads", "images", self.file_path)
+        return ""
+

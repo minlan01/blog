@@ -129,7 +129,7 @@ async function loadData() {
   await siteStore.loadProfile()
 
   const [posts, cats, tagList] = await Promise.all([
-    safeCall(() => getPosts(), []),
+    safeCall(() => getPosts({ per_page: 50 }), []),
     safeCall(() => getCategories(), []),
     safeCall(() => getTags(), []),
   ])

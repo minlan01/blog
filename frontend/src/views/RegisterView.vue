@@ -24,7 +24,13 @@
             </div>
             <div class="auth-page__field">
               <label class="auth-page__label">密码</label>
-              <input v-model="password" type="password" class="auth-page__input" required autocomplete="new-password" minlength="6" placeholder="至少6位" />
+              <div class="auth-page__password-wrap">
+                <input v-model="password" :type="showPassword ? 'text' : 'password'" class="auth-page__input" required autocomplete="new-password" minlength="6" placeholder="至少6位" />
+                <button type="button" class="auth-page__password-toggle" @click="showPassword = !showPassword" :title="showPassword ? '隐藏密码' : '显示密码'">
+                  <svg v-if="showPassword" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <button type="submit" class="auth-page__submit" :disabled="submitting || !!usernameError">
               {{ submitting ? '注册中...' : '注册' }}
@@ -53,10 +59,11 @@ const password = ref('')
 const error = ref('')
 const usernameError = ref('')
 const submitting = ref(false)
+const showPassword = ref(false)
 
 function validateUsername() {
   if (!/^[a-zA-Z0-9]*$/.test(username.value)) {
-    usernameError.value = 'Username can only contain letters (a-z, A-Z) and numbers (0-9)'
+    usernameError.value = '用户名只能包含英文字母和数字'
   } else {
     usernameError.value = ''
   }
@@ -64,11 +71,11 @@ function validateUsername() {
 
 async function handleRegister() {
   if (!/^[a-zA-Z0-9]+$/.test(username.value)) {
-    error.value = 'Username can only contain letters and numbers'
+    error.value = '用户名只能包含英文字母和数字'
     return
   }
   if (password.value.length < 6) {
-    error.value = 'Password must be at least 6 characters'
+    error.value = '密码至少需要6个字符'
     return
   }
   error.value = ''
@@ -77,7 +84,7 @@ async function handleRegister() {
     await authStore.register(username.value, password.value)
     router.push('/')
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || 'Registration failed. Try again.'
+    error.value = e?.response?.data?.detail || '注册失败，请稍后重试'
   } finally {
     submitting.value = false
   }
@@ -182,6 +189,34 @@ async function handleRegister() {
 .auth-page__field-error {
   font-size: 0.75rem;
   color: var(--error-main);
+}
+
+.auth-page__password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-page__password-wrap .auth-page__input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.auth-page__password-toggle {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color var(--duration-fast) ease;
+}
+
+.auth-page__password-toggle:hover {
+  color: var(--color-text);
 }
 
 .auth-page__submit {

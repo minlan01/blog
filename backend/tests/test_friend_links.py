@@ -54,7 +54,7 @@ def test_delete_friend_link(client, admin_headers):
     link_id = create_resp.json()["id"]
 
     resp = client.delete(f"/api/v1/admin/friend-links/{link_id}", headers=admin_headers)
-    assert resp.status_code == 200
+    assert resp.status_code == 204
 
     # Verify deleted
     list_resp = client.get("/api/v1/friend-links")

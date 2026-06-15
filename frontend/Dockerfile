@@ -12,10 +12,18 @@ RUN npm run build
 # ── Stage 2: Serve ──
 FROM nginx:alpine
 
-# 复制构建产物
+RUN apk add --no-cache curl
+
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Nginx 配置：SPA history 模式 + API 反向代理
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
+
+USER nginx
+
+EXPOSE 8080

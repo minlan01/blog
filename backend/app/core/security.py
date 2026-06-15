@@ -36,10 +36,32 @@ def create_refresh_token(data: dict) -> str:
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
+def create_purpose_token(data: dict, purpose: str, expires_delta: timedelta) -> str:
+    to_encode = data.copy()
+    to_encode["type"] = "access"
+    to_encode["purpose"] = purpose
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+
 def decode_access_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") not in ("access", None):
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
+def decode_token_by_purpose(token: str, purpose: str) -> dict | None:
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+        token_type = payload.get("type")
+        if token_type not in ("access", None):
+            return None
+        if payload.get("purpose") != purpose:
             return None
         return payload
     except JWTError:

@@ -3,6 +3,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 
 from app.api.v1.deps import DBSession
+from app.core.xml_utils import xml_escape
 from app.models.post import Post
 
 router = APIRouter(tags=["seo"])
@@ -12,7 +13,9 @@ router = APIRouter(tags=["seo"])
 def get_sitemap(db: DBSession):
     posts = list(
         db.scalars(
-            select(Post).order_by(Post.published_at.desc())
+            select(Post)
+            .where(Post.status == "published")
+            .order_by(Post.published_at.desc())
         )
         .all()
     )
@@ -30,7 +33,7 @@ def get_sitemap(db: DBSession):
     for page in static_pages:
         urls_xml += f"""
   <url>
-    <loc>{page["loc"]}</loc>
+    <loc>{xml_escape(page["loc"])}</loc>
     <changefreq>{page["changefreq"]}</changefreq>
     <priority>{page["priority"]}</priority>
   </url>"""
@@ -39,7 +42,7 @@ def get_sitemap(db: DBSession):
         lastmod = post.published_at.strftime("%Y-%m-%d") if post.published_at else ""
         urls_xml += f"""
   <url>
-    <loc>/posts/{post.slug}</loc>
+    <loc>/posts/{xml_escape(post.slug)}</loc>
     <lastmod>{lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

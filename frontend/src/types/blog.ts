@@ -19,7 +19,9 @@ export interface PostSummary {
   cover_image?: string | null
   reading_time: string
   published_at: string
+  updated_at?: string | null
   is_featured: boolean
+  view_count: number
   status: string
   category?: Category | null
   tags: Tag[]

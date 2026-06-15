@@ -105,6 +105,7 @@ function handleSearch(query: string) {
 function handlePageChange(page: number) {
   currentPage.value = page
   loadData()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 async function loadData() {

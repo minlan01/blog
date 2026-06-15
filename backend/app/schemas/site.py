@@ -21,7 +21,7 @@ class SiteProfileUpdate(BaseModel):
     hero_title: str | None = Field(default=None, max_length=255)
     hero_subtitle: str | None = Field(default=None, max_length=255)
     intro_text: str | None = None
-    avatar: str | None = None
+    avatar: str | None = Field(default=None, max_length=500)
     email: str | None = Field(default=None, max_length=120)
     github_url: str | None = Field(default=None, max_length=255)
     location: str | None = Field(default=None, max_length=120)

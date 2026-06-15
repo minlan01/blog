@@ -1,5 +1,6 @@
 <template>
   <AnimatedBackground />
+  <a href="#main-content" class="skip-link">跳到主要内容</a>
   <div class="shell">
     <AppNavbar
       :is-logged-in="authStore.isLoggedIn"
@@ -8,7 +9,7 @@
       @logout="handleLogout"
     />
 
-    <main class="shell__main">
+    <main id="main-content" class="shell__main">
       <RouterView v-slot="{ Component, route }">
         <Transition name="page-fade">
           <component :is="Component" :key="route.path" />
@@ -48,5 +49,25 @@ onMounted(() => {
 .shell__main {
   position: relative;
   min-height: calc(100vh - var(--header-height) - 80px);
+}
+
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 20px;
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 9999;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
 }
 </style>

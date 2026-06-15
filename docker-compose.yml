@@ -1,19 +1,18 @@
-version: "3.9"
-
 services:
   backend:
     build: ./backend
     container_name: blog-backend
     ports:
-      - "6965:6965"
+      - "6965:8000"
     volumes:
-      # SQLite 数据持久化
       - blog-data:/app/data
+      - blog-uploads:/app/uploads
     environment:
       - SQLITE_DB_PATH=/app/data/blog.db
-      - CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:3710
+      - CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:3710,http://127.0.0.1:3710
+      - SECRET_KEY=${SECRET_KEY:-}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6965/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -23,11 +22,11 @@ services:
     build: ./frontend
     container_name: blog-frontend
     ports:
-      - "80:80"
+      - "80:8080"
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -35,3 +34,4 @@ services:
 
 volumes:
   blog-data:
+  blog-uploads:

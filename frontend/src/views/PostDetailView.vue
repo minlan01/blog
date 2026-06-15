@@ -19,7 +19,7 @@
         <!-- Hero header -->
         <header class="detail__hero">
           <div class="detail__cover" v-if="post.cover_image">
-            <img :src="post.cover_image" alt="" class="detail__cover-img" />
+            <img :src="post.cover_image" :alt="post.title + ' 封面图'" class="detail__cover-img" />
             <div class="detail__cover-mask"></div>
           </div>
 
@@ -136,7 +136,7 @@
   <div v-else class="detail__empty">
     <div class="article-container detail__empty-inner">
       <h1 class="detail__empty-title">404</h1>
-      <p class="detail__empty-text">{{ errorMessage || 'The requested resource does not exist or the API is unavailable.' }}</p>
+      <p class="detail__empty-text">{{ errorMessage || '请求的内容不存在或 API 不可用' }}</p>
       <RouterLink to="/posts" class="detail__back">返回文章列表</RouterLink>
     </div>
   </div>
@@ -156,8 +156,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
 import { getPostBySlug, getRelatedPosts } from '@/api/blog'
+import { isAxiosError } from '@/api/http'
 import { renderMarkdown } from '@/utils/markdown'
 import { useAuthStore } from '@/stores/auth'
 import { useSeo } from '@/composables/useSeo'
@@ -166,6 +166,7 @@ import type { PostDetail, PostSummary } from '@/types/blog'
 
 const route = useRoute()
 const authStore = useAuthStore()
+useSeo()
 
 const post = ref<PostDetail | null>(null)
 const relatedPosts = ref<PostSummary[]>([])
@@ -234,11 +235,24 @@ function copyPostLink() {
   setTimeout(() => { linkCopied.value = false }, 2000)
 }
 
+let _scrollTicking = false
+function onScroll() {
+  if (_scrollTicking) return
+  _scrollTicking = true
+  requestAnimationFrame(() => {
+    updateActiveHeading()
+    _scrollTicking = false
+  })
+}
+
 onMounted(() => {
-  window.addEventListener('scroll', updateActiveHeading, { passive: true })
+  window.addEventListener('scroll', onScroll, { passive: true })
 })
 
-onUnmounted(() => window.removeEventListener('scroll', updateActiveHeading))
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  document.querySelectorAll('script[type="application/ld+json"]').forEach(el => el.remove())
+})
 
 // Enhance content with copy buttons and lightbox
 function enhanceContent() {
@@ -276,6 +290,8 @@ function enhanceContent() {
 
     // Add lightbox + lazy loading to images
     document.querySelectorAll('.detail__content img').forEach((img) => {
+      if ((img as HTMLElement).dataset.lightboxEnabled) return
+      ;(img as HTMLElement).dataset.lightboxEnabled = '1'
       ;(img as HTMLImageElement).loading = 'lazy'
       ;(img as HTMLElement).style.cursor = 'zoom-in'
       img.addEventListener('click', () => {
@@ -302,7 +318,9 @@ async function loadPost(slug: string) {
     post.value = await getPostBySlug(slug)
     if (post.value) {
       document.title = `${post.value.title} — minlan01`
-      // Update SEO meta tags
+      route.meta.postTitle = post.value.title
+      route.meta.postDescription = post.value.summary
+      route.meta.postImage = post.value.cover_image || undefined
       useSeo({
         title: post.value.title,
         description: post.value.summary,
@@ -320,15 +338,15 @@ async function loadPost(slug: string) {
         // Non-critical, ignore
       }
     }
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
+  } catch (error: any) {
+    if (isAxiosError(error)) {
       if (error.response?.status === 404) {
-        errorMessage.value = 'This post does not exist or the link has expired.'
+        errorMessage.value = '文章不存在或链接已失效'
       } else {
-        errorMessage.value = error.response?.data?.detail || 'Post request failed.'
+        errorMessage.value = error.response?.data?.detail || '请求失败，请稍后重试'
       }
     } else {
-      errorMessage.value = 'An unknown error occurred while reading the post.'
+      errorMessage.value = '发生未知错误，请稍后重试'
     }
   } finally {
     loading.value = false
@@ -361,7 +379,7 @@ function injectJsonLd(p: PostDetail) {
 
   const script = document.createElement('script')
   script.type = 'application/ld+json'
-  script.textContent = JSON.stringify(jsonLd)
+  script.textContent = JSON.stringify(jsonLd).replace(/<\/script/gi, '<\\/script')
   document.head.appendChild(script)
 }
 

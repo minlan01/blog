@@ -15,7 +15,7 @@ def _migrate_email_nullable() -> None:
         if "sqlite" in str(engine.url):
             return  # SQLite doesn't support MODIFY COLUMN
         with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE users MODIFY COLUMN email VARCHAR(200) NULL"))
+            conn.execute(text("ALTER TABLE users MODIFY COLUMN email VARCHAR(120) NULL"))
             conn.commit()
 
 
@@ -73,15 +73,14 @@ def _migrate_comment_user_id_nullable() -> None:
 
 
 def _migrate_image_data_mediumblob() -> None:
-    """Change images.data from BLOB to MEDIUMBLOB for larger image uploads. MySQL only."""
+    """Change images.data from BLOB to MEDIUMBLOB NULL for larger image uploads. MySQL only."""
     insp = inspect(engine)
     if 'images' not in insp.get_table_names():
         return
-    # Skip for SQLite — it doesn't support MODIFY COLUMN
     if "sqlite" in str(engine.url):
         return
     with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE images MODIFY COLUMN data MEDIUMBLOB NOT NULL"))
+        conn.execute(text("ALTER TABLE images MODIFY COLUMN data MEDIUMBLOB NULL"))
         conn.commit()
 
 
@@ -129,10 +128,12 @@ def _migrate_post_revision_table() -> None:
     insp = inspect(engine)
     if 'post_revisions' in insp.get_table_names():
         return
+    is_mysql = "mysql" in str(engine.url)
+    auto_inc = "AUTO_INCREMENT" if is_mysql else "AUTOINCREMENT"
     with engine.connect() as conn:
-        conn.execute(text("""
+        conn.execute(text(f"""
             CREATE TABLE post_revisions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY {auto_inc},
                 post_id INTEGER NOT NULL REFERENCES posts(id),
                 title VARCHAR(200) NOT NULL,
                 content_markdown TEXT NOT NULL,
@@ -142,6 +143,63 @@ def _migrate_post_revision_table() -> None:
             )
         """))
         conn.commit()
+
+
+def _migrate_missing_indexes() -> None:
+    """Add indexes to frequently queried columns if they don't exist."""
+    insp = inspect(engine)
+    if 'posts' not in insp.get_table_names():
+        return
+
+    post_indexes = insp.get_indexes('posts')
+    post_index_names = {idx['name'] for idx in post_indexes}
+
+    with engine.connect() as conn:
+        if "ix_posts_status" not in post_index_names:
+            conn.execute(text("CREATE INDEX ix_posts_status ON posts(status)"))
+            conn.commit()
+        if "ix_posts_category_id" not in post_index_names:
+            conn.execute(text("CREATE INDEX ix_posts_category_id ON posts(category_id)"))
+            conn.commit()
+        if "ix_posts_published_at" not in post_index_names:
+            conn.execute(text("CREATE INDEX ix_posts_published_at ON posts(published_at)"))
+            conn.commit()
+
+    if 'comments' not in insp.get_table_names():
+        return
+
+    comment_indexes = insp.get_indexes('comments')
+    comment_index_names = {idx['name'] for idx in comment_indexes}
+
+    with engine.connect() as conn:
+        if "ix_comments_post_id" not in comment_index_names:
+            conn.execute(text("CREATE INDEX ix_comments_post_id ON comments(post_id)"))
+            conn.commit()
+        if "ix_comments_parent_id" not in comment_index_names:
+            conn.execute(text("CREATE INDEX ix_comments_parent_id ON comments(parent_id)"))
+            conn.commit()
+
+    if 'post_revisions' not in insp.get_table_names():
+        return
+
+    rev_indexes = insp.get_indexes('post_revisions')
+    rev_index_names = {idx['name'] for idx in rev_indexes}
+
+    with engine.connect() as conn:
+        if "ix_post_revisions_post_id" not in rev_index_names:
+            conn.execute(text("CREATE INDEX ix_post_revisions_post_id ON post_revisions(post_id)"))
+            conn.commit()
+
+    if 'messages' not in insp.get_table_names():
+        return
+
+    message_indexes = insp.get_indexes('messages')
+    message_index_names = {idx['name'] for idx in message_indexes}
+
+    with engine.connect() as conn:
+        if "ix_messages_parent_id" not in message_index_names:
+            conn.execute(text("CREATE INDEX ix_messages_parent_id ON messages(parent_id)"))
+            conn.commit()
 
 
 def init_db() -> None:
@@ -155,6 +213,7 @@ def init_db() -> None:
     _migrate_message_reply_fields()
     _migrate_user_auth_fields()
     _migrate_post_revision_table()
+    _migrate_missing_indexes()
 
     # Then create any missing tables
     Base.metadata.create_all(bind=engine)

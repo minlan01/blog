@@ -28,3 +28,21 @@ class CommentRead(BaseModel):
         if v is None:
             return []
         return v
+
+
+def comment_to_read(c, include_replies: bool = False, _depth: int = 0) -> CommentRead:
+    data = {
+        "id": c.id,
+        "content": c.content,
+        "post_id": c.post_id,
+        "user_id": c.user_id,
+        "parent_id": c.parent_id,
+        "is_approved": c.is_approved,
+        "created_at": c.created_at,
+        "author_name": c.author.username if c.author else None,
+        "replies": [],
+    }
+    cr = CommentRead.model_validate(data)
+    if include_replies and c.replies and _depth < 3:
+        cr.replies = [comment_to_read(r, include_replies=True, _depth=_depth + 1) for r in c.replies if r.id != c.id]
+    return cr

@@ -36,7 +36,7 @@ const slugify = (s: string) =>
   encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-'))
 
 const md = new MarkdownIt({
-  html: true,
+  html: false,
   linkify: true,
   typographer: true,
   highlight(str: string, lang: string) {
@@ -55,6 +55,22 @@ const md = new MarkdownIt({
 
 // Footnotes support: enables [^1] and [^1]: footnote text syntax
 md.use(footnote)
+
+const defaultLinkOpen = md.renderer.rules.link_open || function (tokens: any, idx: number, options: any, env: any, self: any) {
+  return self.renderToken(tokens, idx, options)
+}
+
+md.renderer.rules.link_open = function (tokens: any, idx: number, options: any, env: any, self: any) {
+  const href = tokens[idx].attrGet('href')
+  if (href && (href.toLowerCase().startsWith('javascript:') || href.toLowerCase().startsWith('data:'))) {
+    tokens[idx].attrSet('href', '#')
+    tokens[idx].attrSet('rel', 'nofollow noopener')
+  } else if (href && /^https?:\/\//i.test(href)) {
+    tokens[idx].attrSet('rel', 'noopener noreferrer')
+    tokens[idx].attrSet('target', '_blank')
+  }
+  return defaultLinkOpen(tokens, idx, options, env, self)
+}
 
 // Add IDs to headings for TOC linking
 const originalHeadingOpen = md.renderer.rules.heading_open

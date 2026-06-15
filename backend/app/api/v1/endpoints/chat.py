@@ -1,18 +1,22 @@
 import json
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
+from app.api.v1.deps import CurrentUser
 from app.core.config import settings
 from app.schemas.chat import ChatRequest, ModelInfo
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.get("/models", response_model=list[ModelInfo])
-async def list_models():
-    async with httpx.AsyncClient() as client:
+async def list_models(_user: CurrentUser):
+    async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(f"{settings.LLM_BASE_URL}/v1/models")
         resp.raise_for_status()
     data = resp.json()
@@ -27,10 +31,11 @@ async def list_models():
 
 
 @router.post("/chat")
-async def chat(req: ChatRequest):
+@limiter.limit("20/minute")
+async def chat(request: Request, req: ChatRequest, _user: CurrentUser):
     async def event_stream():
         try:
-            async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(connect=10, read=float(settings.LLM_TIMEOUT), write=10, pool=10)) as client:
                 async with client.stream(
                     "POST",
                     f"{settings.LLM_BASE_URL}/v1/chat/completions",
@@ -55,7 +60,9 @@ async def chat(req: ChatRequest):
                             yield f"data: {json.dumps({'content': content})}\n\n"
         except httpx.ConnectError:
             yield f"data: {json.dumps({'error': 'Cannot connect to AI server. Please ensure llama-server is running.'})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        except httpx.TimeoutException:
+            yield f"data: {json.dumps({'error': 'AI server request timed out. Please try again.'})}\n\n"
+        except Exception:
+            yield f"data: {json.dumps({'error': 'An unexpected error occurred during AI response.'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

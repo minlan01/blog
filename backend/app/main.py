@@ -30,6 +30,9 @@ async def lifespan(_: FastAPI):
     init_db()
     logger.info("数据库就绪，服务启动完成")
     yield
+    from app.core.email import close_email_pool
+    close_email_pool()
+    logger.info("SMTP 连接池已关闭")
 
 
 app = FastAPI(
@@ -70,6 +73,10 @@ async def log_requests(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers[
+        "Content-Security-Policy"
+    ] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
     return response
 
 

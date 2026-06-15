@@ -11,12 +11,10 @@ DBSession = Annotated[Session, Depends(get_db)]
 
 
 def _extract_token(request: Request) -> str | None:
-    """Extract Bearer token from Authorization header or fallback to query param."""
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
         return auth[7:].strip()
-    # Fallback for backward compat: query param
-    return request.query_params.get("token")
+    return None
 
 
 def get_current_user(request: Request, db: DBSession) -> User:

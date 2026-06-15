@@ -1,5 +1,7 @@
 """GitHub OAuth endpoints."""
 
+import secrets
+
 import httpx
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
@@ -33,7 +35,7 @@ async def github_callback(code: str, db: DBSession):
         raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
 
     # Exchange code for access token
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         token_resp = await client.post(
             "https://github.com/login/oauth/access_token",
             json={
@@ -76,7 +78,7 @@ async def github_callback(code: str, db: DBSession):
         user = User(
             username=username,
             email=primary_email,
-            password_hash=hash_password(github_id),  # Random password since OAuth
+            password_hash=hash_password(secrets.token_hex(32)),
             avatar=avatar,
             email_verified=True,
         )

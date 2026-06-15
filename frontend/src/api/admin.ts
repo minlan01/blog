@@ -1,7 +1,3 @@
-/**
- * 管理后台 API
- * 当前后端未接入认证，后续需要加 token header
- */
 import { http } from './http'
 import type { PostDetail, PostSummary, Category, Tag, SiteProfile, FriendLink, User, CommentRead } from '@/types/blog'
 

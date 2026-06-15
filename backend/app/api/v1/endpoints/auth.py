@@ -3,13 +3,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.api.v1.deps import DBSession, _extract_token, get_current_user
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_refresh_token,
+    decode_token_by_purpose,
     hash_password,
     validate_password_strength,
     verify_password,
@@ -44,7 +45,7 @@ def register(request: Request, body: UserCreate, db: DBSession):
 
     existing = db.scalar(select(User).where(User.username == body.username))
     if existing:
-        raise HTTPException(status_code=409, detail="Username already registered")
+        raise HTTPException(status_code=409, detail="用户名已被注册")
 
     if body.email:
         existing_email = db.scalar(select(User).where(User.email == body.email))
@@ -76,11 +77,17 @@ def login(request: Request, body: LoginRequest, db: DBSession):
         )
 
     if not user or not verify_password(body.password, user.password_hash):
-        # Increment failed attempts
         if user:
-            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
-            if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
-                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCK_DURATION_MINUTES)
+            db.execute(
+                update(User)
+                .where(User.id == user.id)
+                .values(failed_login_attempts=User.failed_login_attempts + 1)
+            )
+            db.execute(
+                update(User)
+                .where(User.id == user.id, User.failed_login_attempts >= MAX_FAILED_ATTEMPTS)
+                .values(locked_until=datetime.now(timezone.utc) + timedelta(minutes=LOCK_DURATION_MINUTES))
+            )
             db.commit()
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
@@ -100,7 +107,7 @@ def login(request: Request, body: LoginRequest, db: DBSession):
 def refresh_token(body: RefreshRequest, db: DBSession):
     payload = decode_refresh_token(body.refresh_token)
     if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+        raise HTTPException(status_code=401, detail="刷新令牌无效或已过期")
 
     user_id = payload.get("sub")
     user = db.get(User, int(user_id))
@@ -137,7 +144,7 @@ def update_profile(body: UserUpdate, request: Request, db: DBSession):
     if body.email is not None:
         existing = db.scalar(select(User).where(User.email == body.email, User.id != user.id))
         if existing:
-            raise HTTPException(status_code=409, detail="Email already in use")
+            raise HTTPException(status_code=409, detail="邮箱已被使用")
         user.email = body.email
         user.email_verified = False
     db.commit()
@@ -162,36 +169,32 @@ def reset_password(body: ResetPasswordRequest, db: DBSession):
     if errors:
         raise HTTPException(status_code=422, detail=errors)
 
-    payload = decode_refresh_token(body.token) if body.token else None
-    # Use access token decode for reset tokens (they're JWT too)
-    from app.core.security import decode_access_token
-    payload = decode_access_token(body.token)
-    if not payload or payload.get("purpose") != "password_reset":
-        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    payload = decode_token_by_purpose(body.token, "password_reset")
+    if not payload:
+        raise HTTPException(status_code=400, detail="重置令牌无效或已过期")
 
     user = db.get(User, int(payload["sub"]))
     if not user:
-        raise HTTPException(status_code=400, detail="User not found")
+        raise HTTPException(status_code=400, detail="用户不存在")
 
     user.password_hash = hash_password(body.new_password)
     user.refresh_token = None
     user.failed_login_attempts = 0
     user.locked_until = None
     db.commit()
-    return {"message": "Password reset successfully"}
+    return {"message": "密码重置成功"}
 
 
 @router.post("/verify-email")
 def verify_email(body: VerifyEmailRequest, db: DBSession):
-    from app.core.security import decode_access_token
-    payload = decode_access_token(body.token)
-    if not payload or payload.get("purpose") != "email_verify":
-        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+    payload = decode_token_by_purpose(body.token, "email_verify")
+    if not payload:
+        raise HTTPException(status_code=400, detail="验证令牌无效或已过期")
 
     user = db.get(User, int(payload["sub"]))
     if not user:
-        raise HTTPException(status_code=400, detail="User not found")
+        raise HTTPException(status_code=400, detail="用户不存在")
 
     user.email_verified = True
     db.commit()
-    return {"message": "Email verified successfully"}
+    return {"message": "邮箱验证成功"}

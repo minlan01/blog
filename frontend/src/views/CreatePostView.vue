@@ -74,12 +74,15 @@ import 'md-editor-v3/lib/style.css'
 import { http } from '@/api/http'
 import { getCategories } from '@/api/blog'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
 import { useImageUpload } from '@/composables/useImageUpload'
 import { useTheme } from '@/composables/useTheme'
+import { calculateReadingTime } from '@/utils/readingTime'
 import type { Category } from '@/types/blog'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const toast = useToastStore()
 const { theme } = useTheme()
 const categories = ref<Category[]>([])
 const submitting = ref(false)
@@ -126,13 +129,6 @@ async function onUploadImg(files: File[], callback: (urls: string[]) => void) {
   callback(urls.filter(Boolean))
 }
 
-function calculateReadingTime(content: string): string {
-  const chineseChars = (content.match(/[\u4e00-\u9fff]/g) || []).length
-  const englishWords = (content.match(/[a-zA-Z]+/g) || []).length
-  const readingTimeMinutes = Math.max(1, Math.round(Math.max(chineseChars / 300, englishWords / 200)))
-  return `${readingTimeMinutes} min`
-}
-
 async function handleSubmit(status: 'published' | 'draft') {
   if (!form.value.title || !form.value.content_markdown) return
   error.value = ''
@@ -167,6 +163,7 @@ onMounted(async () => {
   try {
     categories.value = await getCategories()
   } catch {
+    toast.error('加载分类失败，请刷新页面重试')
   }
 })
 </script>

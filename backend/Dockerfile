@@ -2,15 +2,20 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# 安装依赖
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制代码
 COPY app/ app/
+COPY alembic/ alembic/
+COPY alembic.ini alembic.ini
 
-# 暴露端口
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos "" appuser && \
+    mkdir -p /app/uploads/images /app/data && \
+    chown -R appuser:appuser /app/uploads /app/data
+USER appuser
+
 EXPOSE 8000
 
-# 启动
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

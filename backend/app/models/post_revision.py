@@ -10,7 +10,7 @@ class PostRevision(Base):
     __tablename__ = "post_revisions"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("posts.id"), nullable=False)
+    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("posts.id"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     content_markdown: Mapped[str] = mapped_column(Text, nullable=False)
     summary: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -19,4 +19,4 @@ class PostRevision(Base):
         DateTime, default=lambda: datetime.now(timezone.utc)
     )
 
-    post = relationship("Post", backref="revisions")
+    post = relationship("Post", back_populates="revisions")

@@ -11,14 +11,17 @@ class Comment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("posts.id"), nullable=False)
+    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("posts.id"), nullable=False, index=True)
     user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     parent_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("comments.id"), nullable=True, default=None
+        Integer, ForeignKey("comments.id"), nullable=True, default=None, index=True
     )
     is_approved: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=None, onupdate=lambda: datetime.now(timezone.utc)
     )
 
     post = relationship("Post", back_populates="comments")
@@ -28,4 +31,5 @@ class Comment(Base):
         primaryjoin="Comment.id == foreign(remote(Comment.parent_id))",
         lazy="selectin",
         order_by="Comment.created_at",
+        cascade="all, delete-orphan",
     )

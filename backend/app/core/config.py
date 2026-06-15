@@ -1,4 +1,6 @@
 from functools import cached_property
+import secrets
+import warnings
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,12 +13,12 @@ class Settings(BaseSettings):
     MYSQL_HOST: str = "127.0.0.1"
     MYSQL_PORT: int = 3715
     MYSQL_USER: str = "root"
-    MYSQL_PASSWORD: str = "123456"
+    MYSQL_PASSWORD: str = ""
     MYSQL_DATABASE: str = "blog"
     LLM_BASE_URL: str = "http://localhost:2713"
     LLM_TIMEOUT: int = 120
-    SECRET_KEY: str = "blog-secret-key-change-in-production"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    SECRET_KEY: str = ""
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # SMTP Email
     SMTP_HOST: str = ""
@@ -56,3 +58,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if not settings.SECRET_KEY:
+    if settings.SQLITE_DB_PATH == ":memory:":
+        settings.SECRET_KEY = secrets.token_hex(32)
+        warnings.warn("SECRET_KEY not set — using random key for tests. Set SECRET_KEY in .env for production.")
+    else:
+        raise ValueError(
+            "SECRET_KEY is not set. "
+            "Please add SECRET_KEY=<your-secret> to your .env file. "
+            "You can generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )

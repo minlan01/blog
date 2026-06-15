@@ -12,6 +12,10 @@
             <span class="profile__field-label">用户名</span>
             <span class="profile__value">{{ authStore.user.username }}</span>
           </div>
+          <div class="profile__field" v-if="authStore.user.email">
+            <span class="profile__field-label">邮箱</span>
+            <span class="profile__value">{{ authStore.user.email }}</span>
+          </div>
           <div class="profile__field">
             <span class="profile__field-label">角色</span>
             <span class="profile__value">

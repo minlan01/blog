@@ -6,20 +6,31 @@ export interface ModelInfo {
   modified_at: string | null
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = localStorage.getItem('token')
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
+}
+
 export async function getModels(): Promise<ModelInfo[]> {
-  const res = await fetch(`${BASE}/ai/models`)
+  const res = await fetch(`${BASE}/ai/models`, { headers: getAuthHeaders() })
   if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`)
   return res.json()
 }
 
 export async function* streamChat(
   model: string,
-  messages: { role: string; content: string }[]
+  messages: { role: string; content: string }[],
+  signal?: AbortSignal
 ): AsyncGenerator<string, void, undefined> {
   const res = await fetch(`${BASE}/ai/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages })
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ model, messages }),
+    signal,
   })
 
   if (!res.ok) throw new Error(`Chat request failed: ${res.status}`)
@@ -29,26 +40,30 @@ export async function* streamChat(
   const decoder = new TextDecoder()
   let buffer = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
 
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
 
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed.startsWith('data: ')) continue
-      const payload = trimmed.slice(6)
-      if (payload === '[DONE]') return
-      try {
-        const data = JSON.parse(payload)
-        if (data.error) throw new Error(data.error)
-        if (data.content) yield data.content
-      } catch {
-        // skip malformed lines
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data: ')) continue
+        const payload = trimmed.slice(6)
+        if (payload === '[DONE]') return
+        try {
+          const data = JSON.parse(payload)
+          if (data.error) throw new Error(data.error)
+          if (data.content) yield data.content
+        } catch {
+          // skip malformed lines
+        }
       }
     }
+  } finally {
+    reader.releaseLock()
   }
 }

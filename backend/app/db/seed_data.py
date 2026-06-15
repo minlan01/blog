@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import os
+import secrets
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -6,24 +8,35 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models import Category, Comment, FriendLink, Post, SiteConfig, Tag, User
 
+import logging
+_logger = logging.getLogger("blog")
+
+
+def _get_admin_password() -> str:
+    pwd = os.environ.get("ADMIN_DEFAULT_PASSWORD")
+    if pwd:
+        return pwd
+    pwd = secrets.token_hex(8)
+    _logger.warning("ADMIN_DEFAULT_PASSWORD not set. Generated admin password: %s", pwd)
+    return pwd
+
 
 def _seed_users(db: Session) -> None:
-    # Migrate old admin user to minlan01 if it exists
+    admin_pwd = _get_admin_password()
     old_admin = db.scalar(select(User).where(User.username == "admin"))
     if old_admin:
         old_admin.username = "minlan01"
         old_admin.role = "super_admin"
-        old_admin.password_hash = hash_password("minlan01")
+        old_admin.password_hash = hash_password(admin_pwd)
         old_admin.bio = "Super Administrator"
         db.commit()
         return
 
-    # Create minlan01 if no users exist
     existing = db.scalar(select(User).where(User.username == "minlan01"))
     if not existing:
         admin_user = User(
             username="minlan01",
-            password_hash=hash_password("minlan01"),
+            password_hash=hash_password(admin_pwd),
             role="super_admin",
             bio="Super Administrator",
         )
@@ -157,13 +170,13 @@ def seed_database(db: Session) -> None:
     # ── 用户：minlan01 作为 super_admin ──
     admin_user = User(
         username="minlan01",
-        password_hash=hash_password("minlan01"),
+        password_hash=hash_password(_get_admin_password()),
         role="super_admin",
         bio="Super Administrator",
     )
     test_user = User(
         username="reader",
-        password_hash=hash_password("reader123"),
+        password_hash=hash_password(secrets.token_hex(8)),
         role="user",
         bio="热爱阅读的旅行者",
     )

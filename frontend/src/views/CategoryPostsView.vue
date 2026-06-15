@@ -7,7 +7,14 @@
         <p v-if="categoryDesc" class="category-posts__desc">{{ categoryDesc }}</p>
       </header>
 
-      <div class="category-posts__grid" v-if="posts.length">
+      <div v-if="loadError" class="category-posts__error">{{ loadError }}</div>
+
+      <!-- Loading state -->
+      <div v-else-if="!loaded" class="category-posts__loading">
+        <div class="category-posts__skeleton" v-for="n in 3" :key="n"></div>
+      </div>
+
+      <div class="category-posts__grid" v-else-if="posts.length">
         <PostCard v-for="(post, idx) in posts" :key="post.id" :post="post" :index="idx" />
       </div>
 
@@ -33,6 +40,7 @@ const categories = ref<Category[]>([])
 const categoryName = ref('')
 const categoryDesc = ref('')
 const loaded = ref(false)
+const loadError = ref('')
 
 async function loadData(slug: string) {
   loaded.value = false
@@ -53,7 +61,7 @@ async function loadData(slug: string) {
     categoryName.value = cat?.name || slug
     categoryDesc.value = cat?.description || ''
   } catch {
-    posts.value = []
+    loadError.value = '分类文章加载失败，请刷新页面重试'
   }
   loaded.value = true
 }
@@ -95,6 +103,29 @@ watch(() => route.params.slug, (slug) => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: var(--space-lg);
+}
+
+.category-posts__error {
+  text-align: center;
+  padding: var(--space-xl);
+  color: #e74c3c;
+  font-size: 0.92rem;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+
+.category-posts__loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: var(--space-lg);
+}
+
+.category-posts__skeleton {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--glass-border);
 }
 
 .category-posts__empty {

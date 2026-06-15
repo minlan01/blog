@@ -37,6 +37,16 @@
             <label class="message-board__label-text">留言内容</label>
             <textarea v-model="form.content" class="message-board__textarea" rows="4" placeholder="写下你想说的..."></textarea>
           </div>
+          <div class="message-board__captcha-row">
+            <div class="message-board__field message-board__captcha-field">
+              <label class="message-board__label-text">{{ captchaQuestion }}</label>
+              <input v-model="form.captchaAnswer" class="message-board__input" type="number" placeholder="?" />
+            </div>
+            <button type="button" class="message-board__captcha-refresh" @click="loadCaptcha" title="换一个">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
+          </div>
+          <p v-if="captchaError" class="message-board__captcha-error">{{ captchaError }}</p>
           <button class="message-board__submit" @click="submitMessage" :disabled="!canSubmit">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             {{ submitLoading ? '发送中...' : '发送留言' }}
@@ -49,12 +59,25 @@
         <h2 class="message-board__list-title">
           留言 ({{ totalCount }})
         </h2>
-        <TransitionGroup name="msg-list" tag="div" class="message-board__messages">
+
+        <!-- Loading state -->
+        <div v-if="loading" class="message-board__loading">
+          <div class="message-board__skeleton" v-for="n in 3" :key="n"></div>
+        </div>
+
+        <p v-else-if="loadError" class="message-board__load-error">{{ loadError }}</p>
+        <div v-else-if="!messages.length" class="message-board__empty">
+          <p>还没有留言，来做第一个留言的人吧！</p>
+        </div>
+        <TransitionGroup v-else name="msg-list" tag="div" class="message-board__messages">
           <div v-for="msg in messages" :key="msg.id">
             <MessageItem
               :msg="msg"
               :is-admin="isAdmin"
               :replying-to="replyingTo"
+              :captcha-question="captchaQuestion"
+              :captcha-token="captchaToken"
+              :captcha-ts="captchaTs"
               @reply="startReply"
               @delete="handleDelete"
               @submit-reply="submitReply"
@@ -62,6 +85,9 @@
             />
           </div>
         </TransitionGroup>
+
+        <!-- Delete error -->
+        <div v-if="deleteError" class="message-board__delete-error">{{ deleteError }}</div>
       </div>
     </div>
   </section>
@@ -69,31 +95,36 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { createMessage, deleteMessage, getMessages, type MessageRead } from '@/api/messages'
+import { createMessage, deleteMessage, getMessages, getCaptcha, type MessageRead } from '@/api/messages'
+import { useAuthStore } from '@/stores/auth'
 import MessageItem from './MessageBoardItem.vue'
 
 const envelopeOpen = ref(false)
 
-const isAdmin = computed(() => {
-  try {
-    const stored = localStorage.getItem('user')
-    if (stored) return JSON.parse(stored).role === 'super_admin'
-  } catch {}
-  return false
-})
+const authStore = useAuthStore()
+
+const isAdmin = computed(() => authStore.isAdmin)
 
 const form = reactive({
   name: '',
   email: '',
   content: '',
+  captchaAnswer: '',
 })
+
+const captchaQuestion = ref('')
+const captchaToken = ref('')
+const captchaTs = ref(0)
+const captchaError = ref('')
 
 const messages = ref<MessageRead[]>([])
 const loading = ref(false)
+const loadError = ref('')
+const deleteError = ref('')
 const submitLoading = ref(false)
 const replyingTo = ref<number | null>(null)
 
-const canSubmit = computed(() => form.name.trim() && form.content.trim() && !submitLoading.value)
+const canSubmit = computed(() => form.name.trim() && form.content.trim() && form.captchaAnswer.trim() && !submitLoading.value)
 
 const totalCount = computed(() => {
   function countAll(list: MessageRead[]): number {
@@ -112,12 +143,26 @@ function formatCreatedAt(dateStr: string): string {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
+async function loadCaptcha() {
+  try {
+    const data = await getCaptcha()
+    captchaQuestion.value = data.question
+    captchaToken.value = data.token
+    captchaTs.value = data.ts
+    form.captchaAnswer = ''
+    captchaError.value = ''
+  } catch {
+    captchaError.value = '验证码加载失败，请刷新页面重试'
+  }
+}
+
 async function loadMessages() {
   loading.value = true
+  loadError.value = ''
   try {
     messages.value = await getMessages()
-  } catch (error) {
-    console.error('Failed to load messages:', error)
+  } catch {
+    loadError.value = '留言加载失败，请刷新页面重试'
   } finally {
     loading.value = false
   }
@@ -127,19 +172,25 @@ async function submitMessage() {
   if (!canSubmit.value) return
 
   submitLoading.value = true
+  captchaError.value = ''
   try {
     const newMessage = await createMessage({
       name: form.name.trim(),
       email: form.email.trim() || undefined,
       content: form.content.trim(),
+      captcha_answer: parseInt(form.captchaAnswer, 10),
+      captcha_token: captchaToken.value,
+      captcha_ts: captchaTs.value,
     })
     messages.value.unshift(newMessage)
 
     form.name = ''
     form.email = ''
     form.content = ''
-  } catch (error) {
-    console.error('Failed to submit message:', error)
+    await loadCaptcha()
+  } catch (error: any) {
+    captchaError.value = error?.response?.data?.detail || '发送失败'
+    await loadCaptcha()
   } finally {
     submitLoading.value = false
   }
@@ -154,17 +205,23 @@ function cancelReply() {
 }
 
 async function submitReply(parentId: number, payload: { name: string; email?: string; content: string }) {
+  captchaError.value = ''
   try {
     const reply = await createMessage({
       name: payload.name.trim(),
       email: payload.email?.trim() || undefined,
       content: payload.content.trim(),
       parent_id: parentId,
+      captcha_answer: parseInt(form.captchaAnswer, 10),
+      captcha_token: captchaToken.value,
+      captcha_ts: captchaTs.value,
     })
     insertReply(messages.value, parentId, reply)
     replyingTo.value = null
-  } catch {
-    // Silently handle error
+    await loadCaptcha()
+  } catch (error: any) {
+    captchaError.value = error?.response?.data?.detail || '回复失败，请重试验证码'
+    await loadCaptcha()
   }
 }
 
@@ -181,11 +238,12 @@ function insertReply(list: MessageRead[], parentId: number, reply: MessageRead):
 }
 
 async function handleDelete(msgId: number) {
+  deleteError.value = ''
   try {
     await deleteMessage(msgId)
     removeMessage(messages.value, msgId)
   } catch {
-    // Silently handle error
+    deleteError.value = '删除留言失败，请稍后重试'
   }
 }
 
@@ -203,6 +261,7 @@ function removeMessage(list: MessageRead[], id: number): boolean {
 
 onMounted(() => {
   loadMessages()
+  loadCaptcha()
 })
 </script>
 
@@ -377,8 +436,79 @@ onMounted(() => {
 }
 
 .message-board__submit:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+.message-board__captcha-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.message-board__captcha-field {
+  flex: 1;
+}
+
+.message-board__captcha-refresh {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+  margin-bottom: 0;
+}
+
+.message-board__captcha-refresh:hover {
+  color: var(--primary);
+}
+
+.message-board__captcha-error {
+  color: #ef4444;
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+}
+
+.message-board__load-error {
+  color: #ef4444;
+  font-size: 0.88rem;
+  text-align: center;
+  padding: var(--space-lg);
+}
+
+.message-board__delete-error {
+  color: #ef4444;
+  font-size: 0.82rem;
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-md);
+  border: 1px solid var(--error-border-30);
+  border-radius: var(--radius-sm);
+  background: var(--error-bg-06);
+}
+
+.message-board__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.message-board__skeleton {
+  height: 80px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--glass-border);
+}
+
+.message-board__empty {
+  text-align: center;
+  padding: var(--space-2xl);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg-03);
 }
 
 /* Messages list */

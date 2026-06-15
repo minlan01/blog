@@ -7,8 +7,10 @@
         <h1 class="stats-page__title">站点统计</h1>
       </header>
 
+      <div v-if="loadError" class="stats-page__error">{{ loadError }}</div>
+
       <!-- Overview cards -->
-      <div class="stats-page__overview">
+      <div class="stats-page__overview" v-if="!loadError">
         <div class="stats-page__stat-card" v-for="stat in overviewStats" :key="stat.label">
           <div class="stats-page__stat-icon" v-html="stat.icon"></div>
           <div class="stats-page__stat-info">
@@ -119,6 +121,7 @@ import { getStats, type SiteStats } from '@/api/blog'
 
 const stats = ref<SiteStats | null>(null)
 const loading = ref(true)
+const loadError = ref('')
 
 function formatNumber(n: number): string {
   if (n >= 10000) return (n / 10000).toFixed(1) + 'w'
@@ -189,6 +192,8 @@ const referrers = [
 onMounted(async () => {
   try {
     stats.value = await getStats()
+  } catch {
+    loadError.value = '统计加载失败，请刷新页面重试'
   } finally {
     loading.value = false
   }
@@ -198,6 +203,17 @@ onMounted(async () => {
 <style scoped>
 .stats-page {
   padding: var(--space-3xl) 0;
+}
+
+.stats-page__error {
+  text-align: center;
+  padding: var(--space-xl);
+  color: #e74c3c;
+  font-size: 0.92rem;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-xl);
 }
 
 .stats-page__header {

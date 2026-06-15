@@ -21,7 +21,11 @@
         @cancel-reply="cancelReply"
       />
     </div>
+    <p v-else-if="loadError" class="comments__error">{{ loadError }}</p>
     <p v-else class="comments__empty">暂无评论，来发表第一条吧。</p>
+
+    <!-- Action error (submit/reply/delete) -->
+    <div v-if="actionError" class="comments__action-error">{{ actionError }}</div>
 
     <!-- Main comment form -->
     <form class="comments__form" @submit.prevent="submitComment" v-if="isLoggedIn">
@@ -65,6 +69,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { getComments, createComment, deleteComment } from '@/api/comments'
+import { useAuthStore } from '@/stores/auth'
 import type { CommentRead } from '@/types/blog'
 import CommentItem from './CommentItem.vue'
 
@@ -78,19 +83,16 @@ const emit = defineEmits<{
   (e: 'comment-added'): void
 }>()
 
+const authStore = useAuthStore()
 const comments = ref<CommentRead[]>([])
 const newComment = ref('')
 const submitting = ref(false)
 const replyingTo = ref<number | null>(null)
 const showLoginModal = ref(false)
+const loadError = ref('')
+const actionError = ref('')
 
-const isAdmin = computed(() => {
-  try {
-    const stored = localStorage.getItem('user')
-    if (stored) return JSON.parse(stored).role === 'super_admin'
-  } catch {}
-  return false
-})
+const isAdmin = computed(() => authStore.isAdmin)
 
 const totalCount = computed(() => {
   function countAll(list: CommentRead[]): number {
@@ -103,13 +105,14 @@ async function loadComments() {
   try {
     comments.value = await getComments(props.postId)
   } catch {
-    comments.value = []
+    loadError.value = '评论加载失败，请刷新页面重试'
   }
 }
 
 async function submitComment() {
   if (!newComment.value.trim()) return
   submitting.value = true
+  actionError.value = ''
   try {
     const comment = await createComment({
       content: newComment.value,
@@ -119,7 +122,7 @@ async function submitComment() {
     newComment.value = ''
     emit('comment-added')
   } catch {
-    // Silently handle error
+    actionError.value = '评论发表失败，请稍后重试'
   } finally {
     submitting.value = false
   }
@@ -138,6 +141,7 @@ function cancelReply() {
 }
 
 async function submitReply(parentId: number, content: string) {
+  actionError.value = ''
   try {
     const reply = await createComment({
       content,
@@ -148,7 +152,7 @@ async function submitReply(parentId: number, content: string) {
     replyingTo.value = null
     emit('comment-added')
   } catch {
-    // Silently handle error
+    actionError.value = '回复发表失败，请稍后重试'
   }
 }
 
@@ -165,11 +169,12 @@ function insertReply(list: CommentRead[], parentId: number, reply: CommentRead):
 }
 
 async function handleDelete(commentId: number) {
+  actionError.value = ''
   try {
     await deleteComment(commentId)
     removeComment(comments.value, commentId)
   } catch {
-    // Silently handle error
+    actionError.value = '删除评论失败，请稍后重试'
   }
 }
 
@@ -220,6 +225,38 @@ onMounted(loadComments)
   color: var(--color-text-muted);
   font-size: 0.85rem;
   margin: 0 0 var(--space-lg);
+}
+
+.comments__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.comments__skeleton {
+  height: 64px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--glass-border);
+}
+
+.comments__error {
+  color: #ef4444;
+  font-size: 0.85rem;
+  margin: 0 0 var(--space-lg);
+  text-align: center;
+  padding: var(--space-md);
+}
+
+.comments__action-error {
+  color: #ef4444;
+  font-size: 0.82rem;
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--error-border-30);
+  border-radius: var(--radius-sm);
+  background: var(--error-bg-06);
 }
 
 .comments__form {

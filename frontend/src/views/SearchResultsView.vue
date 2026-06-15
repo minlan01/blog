@@ -8,7 +8,8 @@
         <SearchBar @search="handleSearch" />
       </header>
 
-      <div v-if="loaded && results.length" class="search-results__list">
+      <div v-if="searchError" class="search-results__error">{{ searchError }}</div>
+      <div v-else-if="loaded && results.length" class="search-results__list">
         <RouterLink
           v-for="post in results"
           :key="post.id"
@@ -23,8 +24,7 @@
         </RouterLink>
       </div>
 
-      <div v-else-if="loaded && query" class="search-results__empty">
-        <p>未找到与 "{{ query }}" 相关的结果</p>
+      <div v-else-if="loaded && query" class="search-results__empty">        <p>未找到与 "{{ query }}" 相关的结果</p>
       </div>
 
       <div v-else-if="!query" class="search-results__hint">
@@ -47,6 +47,8 @@ const router = useRouter()
 const query = ref('')
 const results = ref<PostSummary[]>([])
 const loaded = ref(false)
+const searchError = ref('')
+let _searchGeneration = 0
 
 function handleSearch(q: string) {
   if (q.trim()) {
@@ -58,20 +60,28 @@ async function doSearch(q: string) {
   if (!q) {
     results.value = []
     loaded.value = true
+    searchError.value = ''
     return
   }
+  const generation = ++_searchGeneration
   loaded.value = false
+  searchError.value = ''
   try {
     const data = await getPosts({ search: q })
+    if (generation !== _searchGeneration) return
     if (Array.isArray(data)) {
       results.value = data
     } else {
       results.value = (data as any)?.items || []
     }
   } catch {
+    if (generation !== _searchGeneration) return
     results.value = []
+    searchError.value = '搜索失败，请稍后重试'
   }
-  loaded.value = true
+  if (generation === _searchGeneration) {
+    loaded.value = true
+  }
 }
 
 onMounted(() => {
@@ -160,6 +170,26 @@ watch(() => route.query.q, (newQ) => {
   padding: var(--space-3xl);
   color: var(--color-text-muted);
   font-size: 0.88rem;
+}
+
+.search-results__error {
+  text-align: center;
+  padding: var(--space-3xl);
+  color: #ef4444;
+  font-size: 0.88rem;
+}
+
+.search-results__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.search-results__skeleton {
+  height: 72px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--glass-border);
 }
 
 /* Responsive */

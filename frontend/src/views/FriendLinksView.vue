@@ -14,8 +14,15 @@
         </button>
       </div>
 
+      <div v-if="loadError" class="links-page__error">{{ loadError }}</div>
+
+      <!-- Loading state -->
+      <div v-else-if="loading" class="links-page__loading">
+        <div class="links-page__skeleton" v-for="n in 4" :key="n"></div>
+      </div>
+
       <!-- Link sections -->
-      <div v-for="section in linkSections" :key="section.title" class="links-page__section">
+      <div v-else v-for="section in linkSections" :key="section.title" class="links-page__section">
         <h2 class="links-page__section-title">{{ section.title }}</h2>
         <div class="links-page__grid">
           <a
@@ -99,6 +106,7 @@ const siteUrl = ref(window.location.origin)
 
 const links = ref<FriendLink[]>([])
 const loading = ref(true)
+const loadError = ref('')
 
 interface LinkSection {
   title: string
@@ -130,6 +138,8 @@ onMounted(async () => {
   if (!siteStore.profile) siteStore.loadProfile()
   try {
     links.value = await getFriendLinks()
+  } catch {
+    loadError.value = '友链加载失败，请刷新页面重试'
   } finally {
     loading.value = false
   }
@@ -139,6 +149,31 @@ onMounted(async () => {
 <style scoped>
 .links-page {
   padding: var(--space-3xl) 0;
+}
+
+.links-page__error {
+  text-align: center;
+  padding: var(--space-xl);
+  color: #e74c3c;
+  font-size: 0.92rem;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.links-page__loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.links-page__skeleton {
+  height: 80px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--glass-border);
 }
 
 .links-page__header {

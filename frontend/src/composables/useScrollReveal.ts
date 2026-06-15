@@ -48,19 +48,24 @@ export function useScrollReveal(
 export function useInView(threshold = 0.15) {
   const target = ref<HTMLElement | null>(null) as Ref<HTMLElement | null>
   const visible = ref(false)
+  let observer: IntersectionObserver | null = null
 
   onMounted(() => {
     if (!target.value) return
-    const observer = new IntersectionObserver(
+    observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           visible.value = true
-          observer.disconnect()
+          observer?.disconnect()
         }
       },
       { threshold }
     )
     observer.observe(target.value)
+  })
+
+  onUnmounted(() => {
+    observer?.disconnect()
   })
 
   return { target, visible }

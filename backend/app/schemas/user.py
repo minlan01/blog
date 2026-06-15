@@ -1,13 +1,13 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 import re
 
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=2, max_length=50, pattern=r'^[a-zA-Z0-9]+$')
-    password: str = Field(..., min_length=8, max_length=100)
-    email: str | None = None
+    password: str = Field(..., min_length=8, max_length=128)
+    email: EmailStr | None = Field(default=None, max_length=120)
 
     @field_validator('username')
     @classmethod
@@ -32,14 +32,14 @@ class UserRead(BaseModel):
 
 class UserUpdate(BaseModel):
     bio: str | None = None
-    avatar: str | None = None
-    email: str | None = None
+    avatar: str | None = Field(default=None, max_length=500)
+    email: EmailStr | None = Field(default=None, max_length=120)
 
 
 class AdminUserUpdate(BaseModel):
-    role: str | None = None
+    role: str | None = Field(default=None, pattern="^(user|super_admin)$")
     bio: str | None = None
-    avatar: str | None = None
+    avatar: str | None = Field(default=None, max_length=500)
 
 
 class Token(BaseModel):
@@ -58,12 +58,12 @@ class LoginRequest(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: str
+    email: EmailStr = Field(..., max_length=120)
 
 
 class ResetPasswordRequest(BaseModel):
     token: str
-    new_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
 class VerifyEmailRequest(BaseModel):

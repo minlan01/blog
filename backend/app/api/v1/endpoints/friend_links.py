@@ -24,9 +24,13 @@ def list_friend_links(db: DBSession):
 # ── Admin ──
 
 
+_WRITABLE_FIELDS = {"name", "url", "avatar", "description", "category", "badge", "sort_order", "is_active"}
+
+
 @router.post("/admin/friend-links", response_model=FriendLinkRead)
 def create_friend_link(data: FriendLinkCreate, db: DBSession, _admin: SuperAdmin):
-    link = FriendLink(**data.model_dump())
+    safe_data = {k: v for k, v in data.model_dump().items() if k in _WRITABLE_FIELDS}
+    link = FriendLink(**safe_data)
     db.add(link)
     db.commit()
     db.refresh(link)
@@ -39,17 +43,17 @@ def update_friend_link(link_id: int, data: FriendLinkUpdate, db: DBSession, _adm
     if not link:
         raise HTTPException(status_code=404, detail="Friend link not found")
     for key, value in data.model_dump(exclude_unset=True).items():
-        setattr(link, key, value)
+        if key in _WRITABLE_FIELDS:
+            setattr(link, key, value)
     db.commit()
     db.refresh(link)
     return link
 
 
-@router.delete("/admin/friend-links/{link_id}")
+@router.delete("/admin/friend-links/{link_id}", status_code=204)
 def delete_friend_link(link_id: int, db: DBSession, _admin: SuperAdmin):
     link = db.get(FriendLink, link_id)
     if not link:
         raise HTTPException(status_code=404, detail="Friend link not found")
     db.delete(link)
     db.commit()
-    return {"detail": "Deleted"}

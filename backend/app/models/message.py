@@ -14,7 +14,7 @@ class Message(Base):
     email: Mapped[str | None] = mapped_column(String(120), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     color: Mapped[str] = mapped_column(String(20), default="#818cf8")
-    parent_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("messages.id"), nullable=True)
+    parent_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("messages.id"), nullable=True, index=True)
     admin_reply: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_reply_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -24,4 +24,5 @@ class Message(Base):
         backref="parent",
         remote_side=[id],
         lazy="selectin",
+        cascade="all, delete-orphan",
     )

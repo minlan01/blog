@@ -74,13 +74,16 @@ import { http } from '@/api/http'
 import { getAdminPosts } from '@/api/admin'
 import { getCategories } from '@/api/blog'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
 import { useImageUpload } from '@/composables/useImageUpload'
 import { useTheme } from '@/composables/useTheme'
+import { calculateReadingTime } from '@/utils/readingTime'
 import type { Category } from '@/types/blog'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const toast = useToastStore()
 const { theme } = useTheme()
 const categories = ref<Category[]>([])
 const loading = ref(true)
@@ -105,13 +108,14 @@ const form = ref({
 async function loadPost() {
   const slug = route.params.id as string
   try {
-    const { data } = await http.get<any>(`/admin/posts`)
-    const post = data.find((p: any) => p.slug === slug)
-    if (!post) {
+    const { data: listData } = await http.get<any>(`/admin/posts`, { params: { slug } })
+    const postSummary = listData?.[0]
+    if (!postSummary) {
       error.value = 'Post not found.'
       return
     }
-    postIdNum.value = post.id
+    postIdNum.value = postSummary.id
+    const { data: post } = await http.get<any>(`/admin/posts/${postSummary.id}`)
     form.value = {
       title: post.title,
       slug: post.slug,
@@ -128,13 +132,6 @@ async function loadPost() {
   } finally {
     loading.value = false
   }
-}
-
-function calculateReadingTime(content: string): string {
-  const chineseChars = (content.match(/[\u4e00-\u9fa5]/g) || []).length
-  const englishWords = (content.match(/[a-zA-Z]+/g) || []).length
-  const readingTimeMinutes = Math.max(1, Math.round(Math.max(chineseChars / 300, englishWords / 200)))
-  return `${readingTimeMinutes} min`
 }
 
 async function onUploadImg(files: File[], callback: (urls: string[]) => void) {
@@ -201,7 +198,7 @@ onMounted(async () => {
   }
   await Promise.all([
     loadPost(),
-    getCategories().then(cats => { categories.value = cats }).catch(() => {}),
+    getCategories().then(cats => { categories.value = cats }).catch(() => { toast.error('加载分类失败，请刷新页面重试') }),
   ])
 })
 </script>

@@ -34,6 +34,7 @@
             v-model="searchQuery"
             class="navbar__search-input"
             placeholder="搜索..."
+            aria-label="搜索文章"
             @keydown.enter="doSearch"
           />
         </div>
@@ -58,6 +59,7 @@
           <input
             v-model="searchQuery"
             placeholder="搜索文章..."
+            aria-label="搜索文章"
             @keydown.enter="doSearch"
           />
         </div>
@@ -131,8 +133,21 @@ function goHome() {
   router.push('/')
 }
 
-onMounted(() => window.addEventListener('scroll', handleScroll, { passive: true }))
-onUnmounted(() => window.removeEventListener('scroll', handleScroll))
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  document.addEventListener('click', handleOutsideClick)
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+  document.removeEventListener('click', handleOutsideClick)
+})
+
+function handleOutsideClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (mobileOpen.value && !target.closest('.navbar')) {
+    mobileOpen.value = false
+  }
+}
 </script>
 
 <style scoped>

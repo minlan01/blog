@@ -35,10 +35,8 @@ export function useSeo(params: SeoParams = {}) {
 
   document.title = title
 
-  // Standard meta
   setMeta('name', 'description', description)
 
-  // Open Graph
   setMeta('property', 'og:title', title)
   setMeta('property', 'og:description', description)
   setMeta('property', 'og:image', image)
@@ -46,7 +44,6 @@ export function useSeo(params: SeoParams = {}) {
   setMeta('property', 'og:type', type)
   setMeta('property', 'og:site_name', SITE_NAME)
 
-  // Twitter Card
   setMeta('name', 'twitter:card', 'summary_large_image')
   setMeta('name', 'twitter:title', title)
   setMeta('name', 'twitter:description', description)
@@ -63,6 +60,26 @@ export function usePageSeo() {
       useSeo({
         title: meta.title as string | undefined,
       })
+    },
+    { immediate: true }
+  )
+}
+
+export function usePostSeo() {
+  const route = useRoute()
+
+  watch(
+    () => route.params.slug,
+    () => {
+      const meta = route.meta as Record<string, any>
+      if (meta.postTitle) {
+        useSeo({
+          title: meta.postTitle as string,
+          description: meta.postDescription as string | undefined,
+          image: meta.postImage as string | undefined,
+          type: 'article',
+        })
+      }
     },
     { immediate: true }
   )
