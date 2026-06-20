@@ -263,6 +263,349 @@ async function confirmDelete() {
   color: var(--color-accent);
 }
 
+/* Shared styles for admin tab child components. Scoped styles do not
+   automatically reach inside child components, so these use :deep(). */
+.admin-page :deep(.admin-page__panel) {
+  animation: fadeIn 0.2s ease;
+}
+
+.admin-page :deep(.admin-page__toolbar) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.admin-page :deep(.admin-page__toolbar-left),
+.admin-page :deep(.admin-page__batch-bar) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.admin-page :deep(.admin-page__batch-bar) {
+  padding: 6px 10px;
+  border: 1px solid var(--accent-tint-25);
+  border-radius: var(--radius-sm);
+  background: var(--accent-tint-06);
+  color: var(--color-text-soft);
+  font-size: 0.82rem;
+}
+
+.admin-page :deep(.admin-page__create-btn) {
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 10px 22px;
+  border: 1px solid var(--accent-tint-40);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  background: var(--accent-tint-10);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.admin-page :deep(.admin-page__create-btn:hover) {
+  background: var(--accent-tint-20);
+  border-color: var(--color-accent);
+}
+
+.admin-page :deep(.admin-page__create-btn--sm) {
+  padding: 8px 16px;
+  font-size: 0.82rem;
+}
+
+.admin-page :deep(.admin-page__loading),
+.admin-page :deep(.admin-page__error) {
+  text-align: center;
+  padding: var(--space-3xl);
+  color: var(--color-text-muted);
+}
+
+.admin-page :deep(.admin-page__retry) {
+  margin-top: var(--space-md);
+  padding: 8px 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--glass-bg-02);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.admin-page :deep(.admin-page__retry:hover) {
+  border-color: var(--accent-tint-40);
+  color: var(--color-accent);
+}
+
+.admin-page :deep(.admin-page__inline-form) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.admin-page :deep(.admin-page__inline-form .admin-input) {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.admin-page :deep(.admin-input) {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg-12);
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.admin-page :deep(.admin-input::placeholder) {
+  color: var(--color-text-muted);
+}
+
+.admin-page :deep(.admin-input:focus) {
+  border-color: var(--accent-tint-50);
+  background: var(--glass-bg-20);
+}
+
+.admin-page :deep(.admin-input--inline) {
+  width: 100%;
+  min-width: 60px;
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 0.82rem;
+}
+
+.admin-page :deep(.admin-input--textarea) {
+  width: 100%;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.admin-page :deep(.admin-table-wrap) {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--glass-surface-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-surface-bg);
+  backdrop-filter: var(--glass-card-blur);
+  -webkit-backdrop-filter: var(--glass-card-blur);
+}
+
+.admin-page :deep(.admin-table) {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+}
+
+.admin-page :deep(.admin-table th),
+.admin-page :deep(.admin-table td) {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.admin-page :deep(.admin-table th) {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--glass-bg-03);
+  white-space: nowrap;
+}
+
+.admin-page :deep(.admin-table td) {
+  color: var(--color-text-soft);
+}
+
+.admin-page :deep(.admin-table tr:last-child td) {
+  border-bottom: none;
+}
+
+.admin-page :deep(.admin-table input[type="checkbox"]) {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}
+
+.admin-page :deep(.admin-table__title) {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.admin-page :deep(.admin-table__date),
+.admin-page :deep(.admin-table__actions) {
+  white-space: nowrap;
+}
+
+.admin-page :deep(.admin-table__actions .admin-btn) {
+  margin-right: 6px;
+}
+
+.admin-page :deep(.admin-table__actions .admin-btn:last-child) {
+  margin-right: 0;
+}
+
+.admin-page :deep(.admin-table__empty) {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-xl);
+}
+
+.admin-page :deep(.admin-table__reply-row) {
+  padding: var(--space-md);
+  background: var(--glass-bg-04);
+}
+
+.admin-page :deep(.admin-page__reply-form) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.admin-page :deep(.admin-page__reply-label) {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-heading);
+}
+
+.admin-page :deep(.admin-page__reply-actions) {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.admin-page :deep(.admin-toggle) {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.admin-page :deep(.admin-toggle input) {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.admin-page :deep(.admin-toggle__track) {
+  position: relative;
+  width: 38px;
+  height: 20px;
+  background: var(--border-strong);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  transition: all var(--duration-fast) ease;
+}
+
+.admin-page :deep(.admin-toggle__thumb) {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--color-text-muted);
+  border-radius: 50%;
+  transition: all var(--duration-fast) ease;
+}
+
+.admin-page :deep(.admin-toggle input:checked + .admin-toggle__track) {
+  background: var(--accent-tint-25);
+  border-color: var(--accent-tint-50);
+}
+
+.admin-page :deep(.admin-toggle input:checked + .admin-toggle__track .admin-toggle__thumb) {
+  left: 20px;
+  background: var(--color-accent);
+}
+
+.admin-page :deep(.admin-toggle:hover .admin-toggle__track) {
+  border-color: var(--border-heavy-2);
+}
+
+.admin-page :deep(.admin-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 5px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-soft);
+  background: var(--glass-bg-02);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  margin-right: 0;
+}
+
+.admin-page :deep(.admin-btn:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-page :deep(.admin-page__badge) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.admin-page :deep(.admin-page__badge--approved) {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.admin-page :deep(.admin-page__badge--pending) {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.admin-page :deep(.admin-page__badge--draft) {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.admin-page :deep(.admin-btn--edit) {
+  color: var(--color-accent);
+  background: var(--accent-tint-06);
+  border-color: var(--accent-tint-30);
+}
+
+.admin-page :deep(.admin-btn--edit:hover:not(:disabled)) {
+  background: var(--accent-tint-15);
+}
+
+.admin-page :deep(.admin-btn--delete) {
+  color: var(--color-text-muted);
+  background: var(--glass-bg-02);
+}
+
+.admin-page :deep(.admin-btn--delete:hover:not(:disabled)) {
+  color: #f87171;
+  border-color: var(--error-border-30);
+}
+
 .admin-page__panel {
   animation: fadeIn 0.2s ease;
 }
@@ -631,13 +974,22 @@ async function confirmDelete() {
     flex-wrap: wrap;
   }
 
-  .admin-input {
+  .admin-page :deep(.admin-input) {
     flex: 1;
     min-width: 120px;
   }
 
-  .admin-table th,
-  .admin-table td {
+  .admin-page :deep(.admin-page__toolbar) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-page :deep(.admin-table) {
+    min-width: 680px;
+  }
+
+  .admin-page :deep(.admin-table th),
+  .admin-page :deep(.admin-table td) {
     padding: 10px 10px;
     font-size: 0.82rem;
   }
