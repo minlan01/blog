@@ -26,7 +26,7 @@ export function useChat() {
         selectedModel.value = models.value[0].name
       }
     } catch {
-      error.value = '无法获取模型列表，请确认 llama.cpp server 正在运行'
+      error.value = '无法获取 DeepSeek 模型列表，请确认后端已配置 DeepSeek API Key'
     }
   }
 

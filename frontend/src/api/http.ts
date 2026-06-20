@@ -69,7 +69,8 @@ http.interceptors.request.use((config) => {
 
     const originalAdapter = config.adapter
     config.adapter = (config) => {
-      const promise = (originalAdapter || axios.defaults.adapter)!(config)
+      const adapter = axios.getAdapter(originalAdapter || axios.defaults.adapter)
+      const promise = adapter(config)
       pendingRequests.set(cacheKey!, promise as Promise<any>)
       return (promise as Promise<any>).finally(() => {
         pendingRequests.delete(cacheKey!)
@@ -151,10 +152,10 @@ http.interceptors.response.use(
       }
 
       if (!error.response) {
-        console.warn(`[API] 网络不可达: ${url}`)
+        console.warn(`[API] 缃戠粶涓嶅彲杈? ${url}`)
       } else if (status === 404) {
       } else if (status && status >= 500) {
-        console.error(`[API] 服务端错误 ${status}: ${url}`)
+        console.error(`[API] 鏈嶅姟绔敊璇?${status}: ${url}`)
       }
     }
     return Promise.reject(error)

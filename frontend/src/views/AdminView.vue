@@ -116,15 +116,21 @@ function onTabChange(tab: string) {
 }
 
 const refreshKey = ref(0)
+type DeleteType = 'post' | 'category' | 'tag' | 'friend-link' | 'user'
 
 const deleteModal = reactive({
   show: false,
-  type: '' as 'post' | 'category' | 'tag' | 'friend-link' | 'user',
+  type: '' as DeleteType | '',
   id: 0,
   name: '',
 })
 
-function openDeleteModal(type: 'post' | 'category' | 'tag' | 'friend-link' | 'user', id: number, name: string) {
+function isDeleteType(type: string): type is DeleteType {
+  return ['post', 'category', 'tag', 'friend-link', 'user'].includes(type)
+}
+
+function openDeleteModal(type: string, id: number, name: string) {
+  if (!isDeleteType(type)) return
   deleteModal.show = true
   deleteModal.type = type
   deleteModal.id = id

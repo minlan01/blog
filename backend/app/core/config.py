@@ -15,7 +15,10 @@ class Settings(BaseSettings):
     MYSQL_USER: str = "root"
     MYSQL_PASSWORD: str = ""
     MYSQL_DATABASE: str = "blog"
-    LLM_BASE_URL: str = "http://localhost:2713"
+    LLM_BASE_URL: str = "https://api.deepseek.com"
+    LLM_API_KEY: str = ""
+    DEEPSEEK_API_KEY: str = ""
+    LLM_DEFAULT_MODEL: str = "deepseek-v4-flash"
     LLM_TIMEOUT: int = 120
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
@@ -55,6 +58,14 @@ class Settings(BaseSettings):
     @cached_property
     def upload_allowed_types_list(self) -> list[str]:
         return [t.strip() for t in self.UPLOAD_ALLOWED_TYPES.split(",") if t.strip()]
+
+    @cached_property
+    def llm_api_key(self) -> str:
+        return self.LLM_API_KEY or self.DEEPSEEK_API_KEY
+
+    @cached_property
+    def llm_base_url(self) -> str:
+        return self.LLM_BASE_URL.rstrip("/")
 
 
 settings = Settings()
