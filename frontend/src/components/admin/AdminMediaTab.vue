@@ -2,12 +2,13 @@
   <div class="admin-page__panel">
     <div class="admin-page__media-toolbar">
       <div class="admin-page__media-toolbar__left">
-        <button class="admin-page__media-btn admin-page__media-btn--primary" @click="triggerMediaUpload">
+        <button class="admin-page__media-btn admin-page__media-btn--primary" :disabled="mediaUploading" @click="triggerMediaUpload">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          选择文件
+          {{ mediaUploading ? '上传中...' : '选择图片' }}
         </button>
-        <input ref="mediaFileInput" type="file" accept="image/*" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;" @change="handleMediaUpload" />
-        <span v-if="mediaUploading" class="admin-page__media-status">上传中...</span>
+        <input ref="mediaFileInput" type="file" accept="image/*" multiple class="admin-page__media-file-input" @change="handleMediaUpload" />
+        <span v-if="mediaUploading" class="admin-page__media-status">正在上传 {{ mediaUploadProgress.done }}/{{ mediaUploadProgress.total }}</span>
+        <span v-else-if="mediaUploadSuccess" class="admin-page__media-status admin-page__media-status--success">{{ mediaUploadSuccess }}</span>
         <span v-if="mediaUploadError" class="admin-page__media-status admin-page__media-status--error">{{ mediaUploadError }}</span>
       </div>
       <div class="admin-page__media-toolbar__right">
@@ -35,14 +36,31 @@
         class="admin-page__media-card"
         :class="{ 'admin-page__media-card--selected': mediaSelectedIds.has(img.id), 'admin-page__media-card--editing': editingImgName?.id === img.id }"
       >
-        <div class="admin-page__media-img-wrap" @click="toggleMediaSelect(img.id)">
-          <img :src="mediaUrl(img.url)" :alt="img.filename" class="admin-page__media-img" />
-          <span class="admin-page__media-check-mark">
+        <div class="admin-page__media-img-wrap">
+          <button
+            type="button"
+            class="admin-page__media-select"
+            :class="{ 'admin-page__media-select--active': mediaSelectedIds.has(img.id) }"
+            :title="mediaSelectedIds.has(img.id) ? '取消选择' : '选择图片'"
+            @click.stop="toggleMediaSelect(img.id)"
+          >
             <svg v-if="mediaSelectedIds.has(img.id)" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-          </span>
-          <span class="admin-page__media-preview-hint" @click.stop="previewImage = img">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </span>
+          </button>
+          <button type="button" class="admin-page__media-img-button" :title="`查看 ${img.filename}`" @click="openPreview(img)">
+            <img
+              v-show="!mediaBrokenIds.has(img.id)"
+              :src="mediaUrl(img.url)"
+              :alt="img.filename"
+              class="admin-page__media-img"
+              loading="lazy"
+              @load="clearMediaBroken(img.id)"
+              @error="markMediaBroken(img.id)"
+            />
+            <span v-if="mediaBrokenIds.has(img.id)" class="admin-page__media-img-error">图片加载失败</span>
+            <span class="admin-page__media-preview-hint">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+          </button>
         </div>
         <div class="admin-page__media-info">
           <template v-if="editingImgName?.id === img.id">
@@ -62,12 +80,13 @@
 
     <Teleport to="body">
       <Transition name="modal">
-        <div v-if="previewImage" class="modal-overlay" @click.self="previewImage = null">
+        <div v-if="previewImage" class="admin-page__media-modal-overlay" @click.self="previewImage = null">
           <div class="admin-page__preview-modal">
-            <img :src="mediaUrl(previewImage.url)" class="admin-page__preview-img" />
+            <img :src="mediaUrl(previewImage.url)" :alt="previewImage.filename" class="admin-page__preview-img" />
             <div class="admin-page__preview-info">
               <span>{{ previewImage.filename }}</span>
               <span style="color:var(--color-text-muted);font-size:0.78rem;margin-left:8px;">{{ formatSize(previewImage.size) }}</span>
+              <a :href="mediaUrl(previewImage.url)" target="_blank" rel="noopener" class="admin-page__preview-link">打开原图</a>
             </div>
             <button class="admin-page__preview-close" @click="previewImage = null">&times;</button>
           </div>
@@ -79,7 +98,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { getImages, deleteImage, updateImage, type ImageItem } from '@/api/admin'
+import { getImages, deleteImage, updateImage, uploadImage, type ImageItem } from '@/api/admin'
 import { safeCall } from '@/api/http'
 import { useToastStore } from '@/stores/toast'
 
@@ -89,8 +108,11 @@ const mediaItems = ref<ImageItem[]>([])
 const mediaLoaded = ref(false)
 const mediaUploading = ref(false)
 const mediaUploadError = ref('')
+const mediaUploadSuccess = ref('')
+const mediaUploadProgress = ref({ done: 0, total: 0 })
 const mediaFileInput = ref<HTMLInputElement | null>(null)
 const mediaSelectedIds = ref<Set<number>>(new Set())
+const mediaBrokenIds = ref<Set<number>>(new Set())
 const previewImage = ref<ImageItem | null>(null)
 const editingImgName = ref<{ id: number; filename: string } | null>(null)
 
@@ -104,6 +126,7 @@ function handleEditSelectedImage() {
 async function loadMedia() {
   mediaLoaded.value = false
   mediaItems.value = await safeCall(() => getImages(), [])
+  mediaBrokenIds.value = new Set()
   mediaLoaded.value = true
 }
 
@@ -113,18 +136,46 @@ function triggerMediaUpload() {
 
 async function handleMediaUpload(event: Event) {
   const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
+  const selectedFiles = Array.from(target.files || [])
+  const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'))
+  if (!selectedFiles.length) return
+  if (!imageFiles.length) {
+    mediaUploadError.value = '请选择图片文件'
+    target.value = ''
+    return
+  }
+
   mediaUploading.value = true
   mediaUploadError.value = ''
+  mediaUploadSuccess.value = ''
+  mediaUploadProgress.value = { done: 0, total: imageFiles.length }
+
+  const failures: string[] = []
   try {
-    const formData = new FormData()
-    formData.append('file', file)
-    const { http } = await import('@/api/http')
-    await http.post('/upload', formData)
+    for (const file of imageFiles) {
+      try {
+        await uploadImage(file)
+      } catch (e: any) {
+        const reason = e?.response?.data?.detail || e?.message || '上传失败'
+        failures.push(`${file.name}: ${reason}`)
+      } finally {
+        mediaUploadProgress.value = {
+          done: mediaUploadProgress.value.done + 1,
+          total: imageFiles.length,
+        }
+      }
+    }
+
     await loadMedia()
-  } catch (e: any) {
-    mediaUploadError.value = e?.response?.data?.detail || e?.message || '上传失败'
+
+    const skipped = selectedFiles.length - imageFiles.length
+    if (failures.length) {
+      const successCount = imageFiles.length - failures.length
+      mediaUploadError.value = `${successCount} 张上传成功，${failures.length} 张失败${skipped ? `，${skipped} 个非图片文件已跳过` : ''}`
+    } else {
+      mediaUploadSuccess.value = imageFiles.length === 1 ? '上传成功' : `已上传 ${imageFiles.length} 张图片`
+      if (skipped) mediaUploadError.value = `${skipped} 个非图片文件已跳过`
+    }
   } finally {
     mediaUploading.value = false
     target.value = ''
@@ -154,6 +205,23 @@ function mediaSelectAll() {
   mediaSelectedIds.value = new Set(mediaItems.value.map(img => img.id))
 }
 
+function openPreview(img: ImageItem) {
+  previewImage.value = img
+}
+
+function markMediaBroken(id: number) {
+  const next = new Set(mediaBrokenIds.value)
+  next.add(id)
+  mediaBrokenIds.value = next
+}
+
+function clearMediaBroken(id: number) {
+  if (!mediaBrokenIds.value.has(id)) return
+  const next = new Set(mediaBrokenIds.value)
+  next.delete(id)
+  mediaBrokenIds.value = next
+}
+
 async function handleDeleteSelectedImages() {
   const ids = [...mediaSelectedIds.value]
   if (!ids.length) return
@@ -177,7 +245,10 @@ async function handleSaveImageName(id: number) {
 }
 
 function mediaUrl(url: string) {
-  return url.startsWith('http') ? url : '/api/v1' + url
+  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:')) return url
+  if (url.startsWith('/api/') || url.startsWith('/uploads/')) return url
+  const base = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
+  return `${base}${url.startsWith('/') ? url : `/${url}`}`
 }
 
 function formatSize(bytes: number) {
@@ -271,9 +342,21 @@ loadMedia()
   background: var(--accent-tint-12);
 }
 
+.admin-page__media-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .admin-page__media-status {
   font-size: 0.82rem;
   color: var(--color-text-muted);
+}
+
+.admin-page__media-status--success {
+  color: #10b981;
 }
 
 .admin-page__media-status--error {
@@ -319,7 +402,20 @@ loadMedia()
 
 .admin-page__media-img-wrap {
   position: relative;
-  cursor: pointer;
+}
+
+.admin-page__media-img-button {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 120px;
+  padding: 0;
+  border: 0;
+  background: var(--glass-bg-04);
+  color: inherit;
+  cursor: zoom-in;
+  overflow: hidden;
+  text-align: left;
 }
 
 .admin-page__media-img {
@@ -329,12 +425,26 @@ loadMedia()
   display: block;
 }
 
-.admin-page__media-check-mark {
+.admin-page__media-img-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 120px;
+  padding: var(--space-sm);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  background: var(--glass-bg-06);
+}
+
+.admin-page__media-select {
   position: absolute;
   top: 6px;
   left: 6px;
+  z-index: 2;
   width: 24px;
   height: 24px;
+  padding: 0;
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -344,15 +454,16 @@ loadMedia()
   border: 1.5px solid var(--border-heavy);
   color: var(--text-overlay-30);
   transition: all var(--duration-fast) ease;
-  pointer-events: none;
+  cursor: pointer;
 }
 
-.admin-page__media-card:hover .admin-page__media-check-mark {
+.admin-page__media-select:hover {
   border-color: var(--text-overlay-45);
   color: var(--text-overlay-50);
+  background: rgba(0, 0, 0, 0.5);
 }
 
-.admin-page__media-card--selected .admin-page__media-check-mark {
+.admin-page__media-select--active {
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: #fff;
@@ -380,9 +491,11 @@ loadMedia()
   opacity: 1;
 }
 
-.admin-page__media-preview-hint:hover {
+.admin-page__media-img-button:hover .admin-page__media-preview-hint,
+.admin-page__media-img-button:focus-visible .admin-page__media-preview-hint {
   background: var(--accent-tint-50);
   color: #fff;
+  opacity: 1;
 }
 
 .admin-page__media-info {
@@ -417,6 +530,18 @@ loadMedia()
   color: var(--color-text-soft);
 }
 
+.admin-page__media-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(18px);
+}
+
 .admin-page__preview-modal {
   position: relative;
   max-width: 90vw;
@@ -437,6 +562,21 @@ loadMedia()
   margin-top: var(--space-sm);
   font-size: 0.85rem;
   color: var(--color-text-soft);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.admin-page__preview-link {
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+
+.admin-page__preview-link:hover {
+  text-decoration: underline;
 }
 
 .admin-page__preview-close {
