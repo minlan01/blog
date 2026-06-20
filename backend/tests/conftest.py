@@ -10,6 +10,8 @@ _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 TEST_DB_PATH = _tmp_db.name
 _tmp_db.close()
 os.environ["SQLITE_DB_PATH"] = TEST_DB_PATH
+os.environ["DATABASE_BACKEND"] = "sqlite"
+os.environ["STORAGE_BACKEND"] = "local"
 os.environ["MYSQL_HOST"] = "localhost"
 os.environ["MYSQL_PORT"] = "99999"  # Ensure MySQL isn't used
 

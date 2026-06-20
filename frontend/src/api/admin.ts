@@ -181,6 +181,8 @@ export interface ImageItem {
   filename: string
   url: string
   size: number
+  mime_type?: string
+  media_type?: 'image' | 'video'
   created_at: string
 }
 
@@ -274,6 +276,7 @@ export async function uploadImage(file: File): Promise<ImageItem> {
   formData.append('file', file)
   const { data } = await http.post<ImageItem>('/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 0,
   })
   return data
 }

@@ -3,23 +3,53 @@
     <div class="admin-page__media-toolbar">
       <div class="admin-page__media-toolbar__left">
         <button class="admin-page__media-btn admin-page__media-btn--primary" :disabled="mediaUploading" @click="triggerMediaUpload">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          {{ mediaUploading ? '上传中...' : '选择图片' }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <path d="m17 8-5-5-5 5" />
+            <path d="M12 3v12" />
+          </svg>
+          {{ mediaUploading ? '上传中...' : '选择媒体' }}
         </button>
-        <input ref="mediaFileInput" type="file" accept="image/*" multiple class="admin-page__media-file-input" @change="handleMediaUpload" />
-        <span v-if="mediaUploading" class="admin-page__media-status">正在上传 {{ mediaUploadProgress.done }}/{{ mediaUploadProgress.total }}</span>
-        <span v-else-if="mediaUploadSuccess" class="admin-page__media-status admin-page__media-status--success">{{ mediaUploadSuccess }}</span>
-        <span v-if="mediaUploadError" class="admin-page__media-status admin-page__media-status--error">{{ mediaUploadError }}</span>
+        <input
+          ref="mediaFileInput"
+          type="file"
+          accept="image/*,video/mp4,video/webm,video/quicktime,video/x-matroska,.mkv"
+          multiple
+          class="admin-page__media-file-input"
+          @change="handleMediaUpload"
+        />
+        <span v-if="mediaUploading" class="admin-page__media-status">
+          正在上传 {{ mediaUploadProgress.done }}/{{ mediaUploadProgress.total }}
+        </span>
+        <span v-else-if="mediaUploadSuccess" class="admin-page__media-status admin-page__media-status--success">
+          {{ mediaUploadSuccess }}
+        </span>
+        <span v-if="mediaUploadError" class="admin-page__media-status admin-page__media-status--error">
+          {{ mediaUploadError }}
+        </span>
       </div>
+
       <div class="admin-page__media-toolbar__right">
         <template v-if="mediaSelectedIds.size > 0">
           <span class="admin-page__media-badge">已选 {{ mediaSelectedIds.size }} 项</span>
-          <button class="admin-page__media-btn" :disabled="mediaSelectedIds.size !== 1" :title="mediaSelectedIds.size > 1 ? '只能选择一张图片进行编辑' : '编辑'" @click="handleEditSelectedImage">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <button
+            class="admin-page__media-btn"
+            :disabled="mediaSelectedIds.size !== 1"
+            :title="mediaSelectedIds.size > 1 ? '只能选择一个媒体文件进行编辑' : '编辑'"
+            @click="handleEditSelectedImage"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
             编辑
           </button>
           <button class="admin-page__media-btn admin-page__media-btn--danger" @click="handleDeleteSelectedImages">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
             删除
           </button>
           <button class="admin-page__media-btn" @click="mediaSelectAll">全选</button>
@@ -27,52 +57,78 @@
         </template>
       </div>
     </div>
+
     <div v-if="!mediaLoaded" class="admin-page__loading">加载中...</div>
-    <div v-else-if="!mediaItems.length" class="admin-page__loading">暂无图片</div>
+    <div v-else-if="!mediaItems.length" class="admin-page__loading">暂无媒体文件</div>
     <div v-else class="admin-page__media-grid">
       <div
-        v-for="img in mediaItems"
-        :key="img.id"
+        v-for="item in mediaItems"
+        :key="item.id"
         class="admin-page__media-card"
-        :class="{ 'admin-page__media-card--selected': mediaSelectedIds.has(img.id), 'admin-page__media-card--editing': editingImgName?.id === img.id }"
+        :class="{ 'admin-page__media-card--selected': mediaSelectedIds.has(item.id), 'admin-page__media-card--editing': editingImgName?.id === item.id }"
       >
         <div class="admin-page__media-img-wrap">
           <button
             type="button"
             class="admin-page__media-select"
-            :class="{ 'admin-page__media-select--active': mediaSelectedIds.has(img.id) }"
-            :title="mediaSelectedIds.has(img.id) ? '取消选择' : '选择图片'"
-            @click.stop="toggleMediaSelect(img.id)"
+            :class="{ 'admin-page__media-select--active': mediaSelectedIds.has(item.id) }"
+            :title="mediaSelectedIds.has(item.id) ? '取消选择' : '选择媒体'"
+            @click.stop="toggleMediaSelect(item.id)"
           >
-            <svg v-if="mediaSelectedIds.has(img.id)" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg v-if="mediaSelectedIds.has(item.id)" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <path d="m20 6-11 11-5-5" />
+            </svg>
           </button>
-          <button type="button" class="admin-page__media-img-button" :title="`查看 ${img.filename}`" @click="openPreview(img)">
+
+          <button type="button" class="admin-page__media-img-button" :title="`查看 ${item.filename}`" @click="openPreview(item)">
             <img
-              v-show="!mediaBrokenIds.has(img.id)"
-              :src="mediaUrl(img.url)"
-              :alt="img.filename"
+              v-if="isImage(item)"
+              v-show="!mediaBrokenIds.has(item.id)"
+              :src="mediaUrl(item.url)"
+              :alt="item.filename"
               class="admin-page__media-img"
               loading="lazy"
-              @load="clearMediaBroken(img.id)"
-              @error="markMediaBroken(img.id)"
+              @load="clearMediaBroken(item.id)"
+              @error="markMediaBroken(item.id)"
             />
-            <span v-if="mediaBrokenIds.has(img.id)" class="admin-page__media-img-error">图片加载失败</span>
+            <video
+              v-else-if="isVideo(item)"
+              v-show="!mediaBrokenIds.has(item.id)"
+              :src="mediaUrl(item.url)"
+              class="admin-page__media-img"
+              muted
+              preload="metadata"
+              @loadedmetadata="clearMediaBroken(item.id)"
+              @error="markMediaBroken(item.id)"
+            />
+            <span v-else class="admin-page__media-img-error">不支持预览</span>
+            <span v-if="mediaBrokenIds.has(item.id)" class="admin-page__media-img-error">媒体加载失败</span>
+            <span class="admin-page__media-type">{{ mediaLabel(item) }}</span>
             <span class="admin-page__media-preview-hint">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
             </span>
           </button>
         </div>
+
         <div class="admin-page__media-info">
-          <template v-if="editingImgName?.id === img.id">
-            <input v-model="editingImgName.filename" class="admin-input admin-input--inline" @keyup.enter="handleSaveImageName(img.id)" @keyup.escape="editingImgName = null" />
+          <template v-if="editingImgName?.id === item.id">
+            <input
+              v-model="editingImgName.filename"
+              class="admin-input admin-input--inline"
+              @keyup.enter="handleSaveImageName(item.id)"
+              @keyup.escape="editingImgName = null"
+            />
             <div class="admin-page__media-edit-actions">
-              <button class="admin-btn admin-btn--edit" @click="handleSaveImageName(img.id)">保存</button>
+              <button class="admin-btn admin-btn--edit" @click="handleSaveImageName(item.id)">保存</button>
               <button class="admin-btn" @click="editingImgName = null">取消</button>
             </div>
           </template>
           <template v-else>
-            <span class="admin-page__media-name" :title="img.filename">{{ img.filename }}</span>
-            <span class="admin-page__media-size">{{ formatSize(img.size) }}</span>
+            <span class="admin-page__media-name" :title="item.filename">{{ item.filename }}</span>
+            <span class="admin-page__media-size">{{ formatSize(item.size) }}</span>
           </template>
         </div>
       </div>
@@ -82,11 +138,23 @@
       <Transition name="modal">
         <div v-if="previewImage" class="admin-page__media-modal-overlay" @click.self="previewImage = null">
           <div class="admin-page__preview-modal">
-            <img :src="mediaUrl(previewImage.url)" :alt="previewImage.filename" class="admin-page__preview-img" />
+            <img
+              v-if="isImage(previewImage)"
+              :src="mediaUrl(previewImage.url)"
+              :alt="previewImage.filename"
+              class="admin-page__preview-img"
+            />
+            <video
+              v-else-if="isVideo(previewImage)"
+              :src="mediaUrl(previewImage.url)"
+              class="admin-page__preview-video"
+              controls
+              autoplay
+            />
             <div class="admin-page__preview-info">
               <span>{{ previewImage.filename }}</span>
-              <span style="color:var(--color-text-muted);font-size:0.78rem;margin-left:8px;">{{ formatSize(previewImage.size) }}</span>
-              <a :href="mediaUrl(previewImage.url)" target="_blank" rel="noopener" class="admin-page__preview-link">打开原图</a>
+              <span class="admin-page__preview-meta">{{ formatSize(previewImage.size) }}</span>
+              <a :href="mediaUrl(previewImage.url)" target="_blank" rel="noopener" class="admin-page__preview-link">打开原文件</a>
             </div>
             <button class="admin-page__preview-close" @click="previewImage = null">&times;</button>
           </div>
@@ -116,11 +184,27 @@ const mediaBrokenIds = ref<Set<number>>(new Set())
 const previewImage = ref<ImageItem | null>(null)
 const editingImgName = ref<{ id: number; filename: string } | null>(null)
 
+function isImage(item: ImageItem) {
+  return item.media_type === 'image' || item.mime_type?.startsWith('image/') || (!item.media_type && !item.mime_type?.startsWith('video/'))
+}
+
+function isVideo(item: ImageItem) {
+  return item.media_type === 'video' || item.mime_type?.startsWith('video/')
+}
+
+function mediaLabel(item: ImageItem) {
+  return isVideo(item) ? 'VIDEO' : 'IMAGE'
+}
+
+function isAllowedMedia(file: File) {
+  return file.type.startsWith('image/') || file.type.startsWith('video/') || file.name.toLowerCase().endsWith('.mkv')
+}
+
 function handleEditSelectedImage() {
   if (mediaSelectedIds.value.size !== 1) return
   const id = [...mediaSelectedIds.value][0]
-  const img = mediaItems.value.find(i => i.id === id)
-  if (img) editingImgName.value = { id: img.id, filename: img.filename }
+  const item = mediaItems.value.find(i => i.id === id)
+  if (item) editingImgName.value = { id: item.id, filename: item.filename }
 }
 
 async function loadMedia() {
@@ -137,10 +221,11 @@ function triggerMediaUpload() {
 async function handleMediaUpload(event: Event) {
   const target = event.target as HTMLInputElement
   const selectedFiles = Array.from(target.files || [])
-  const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'))
   if (!selectedFiles.length) return
-  if (!imageFiles.length) {
-    mediaUploadError.value = '请选择图片文件'
+
+  const mediaFiles = selectedFiles.filter(isAllowedMedia)
+  if (!mediaFiles.length) {
+    mediaUploadError.value = '请选择图片或视频文件'
     target.value = ''
     return
   }
@@ -148,11 +233,11 @@ async function handleMediaUpload(event: Event) {
   mediaUploading.value = true
   mediaUploadError.value = ''
   mediaUploadSuccess.value = ''
-  mediaUploadProgress.value = { done: 0, total: imageFiles.length }
+  mediaUploadProgress.value = { done: 0, total: mediaFiles.length }
 
   const failures: string[] = []
   try {
-    for (const file of imageFiles) {
+    for (const file of mediaFiles) {
       try {
         await uploadImage(file)
       } catch (e: any) {
@@ -161,34 +246,24 @@ async function handleMediaUpload(event: Event) {
       } finally {
         mediaUploadProgress.value = {
           done: mediaUploadProgress.value.done + 1,
-          total: imageFiles.length,
+          total: mediaFiles.length,
         }
       }
     }
 
     await loadMedia()
 
-    const skipped = selectedFiles.length - imageFiles.length
+    const skipped = selectedFiles.length - mediaFiles.length
     if (failures.length) {
-      const successCount = imageFiles.length - failures.length
-      mediaUploadError.value = `${successCount} 张上传成功，${failures.length} 张失败${skipped ? `，${skipped} 个非图片文件已跳过` : ''}`
+      const successCount = mediaFiles.length - failures.length
+      mediaUploadError.value = `${successCount} 个上传成功，${failures.length} 个失败${skipped ? `，${skipped} 个不支持的文件已跳过` : ''}`
     } else {
-      mediaUploadSuccess.value = imageFiles.length === 1 ? '上传成功' : `已上传 ${imageFiles.length} 张图片`
-      if (skipped) mediaUploadError.value = `${skipped} 个非图片文件已跳过`
+      mediaUploadSuccess.value = mediaFiles.length === 1 ? '上传成功' : `已上传 ${mediaFiles.length} 个媒体文件`
+      if (skipped) mediaUploadError.value = `${skipped} 个不支持的文件已跳过`
     }
   } finally {
     mediaUploading.value = false
     target.value = ''
-  }
-}
-
-async function handleDeleteImage(id: number) {
-  try {
-    await deleteImage(id)
-    mediaItems.value = mediaItems.value.filter(img => img.id !== id)
-    mediaSelectedIds.value.delete(id)
-  } catch {
-    toast.error('删除图片失败，请稍后重试')
   }
 }
 
@@ -202,11 +277,11 @@ function toggleMediaSelect(id: number) {
 }
 
 function mediaSelectAll() {
-  mediaSelectedIds.value = new Set(mediaItems.value.map(img => img.id))
+  mediaSelectedIds.value = new Set(mediaItems.value.map(item => item.id))
 }
 
-function openPreview(img: ImageItem) {
-  previewImage.value = img
+function openPreview(item: ImageItem) {
+  previewImage.value = item
 }
 
 function markMediaBroken(id: number) {
@@ -226,7 +301,7 @@ async function handleDeleteSelectedImages() {
   const ids = [...mediaSelectedIds.value]
   if (!ids.length) return
   await Promise.allSettled(ids.map(id => deleteImage(id)))
-  mediaItems.value = mediaItems.value.filter(img => !mediaSelectedIds.value.has(img.id))
+  mediaItems.value = mediaItems.value.filter(item => !mediaSelectedIds.value.has(item.id))
   mediaSelectedIds.value = new Set()
 }
 
@@ -240,7 +315,7 @@ async function handleSaveImageName(id: number) {
     mediaSelectedIds.value = new Set()
     await loadMedia()
   } catch {
-    toast.error('保存图片名失败，请稍后重试')
+    toast.error('保存媒体名称失败，请稍后重试')
   }
 }
 
@@ -254,7 +329,8 @@ function mediaUrl(url: string) {
 function formatSize(bytes: number) {
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
 loadMedia()
@@ -277,6 +353,7 @@ loadMedia()
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .admin-page__media-toolbar__right {
@@ -284,6 +361,7 @@ loadMedia()
   align-items: center;
   gap: var(--space-sm);
   margin-left: auto;
+  flex-wrap: wrap;
 }
 
 .admin-page__media-btn {
@@ -336,12 +414,6 @@ loadMedia()
   border-color: var(--error-border-40);
 }
 
-.admin-page__media-btn--active {
-  color: var(--color-accent);
-  border-color: var(--accent-tint-50);
-  background: var(--accent-tint-12);
-}
-
 .admin-page__media-file-input {
   position: absolute;
   width: 1px;
@@ -375,7 +447,7 @@ loadMedia()
 
 .admin-page__media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: var(--space-md);
 }
 
@@ -408,7 +480,7 @@ loadMedia()
   position: relative;
   display: block;
   width: 100%;
-  height: 120px;
+  height: 126px;
   padding: 0;
   border: 0;
   background: var(--glass-bg-04);
@@ -420,7 +492,7 @@ loadMedia()
 
 .admin-page__media-img {
   width: 100%;
-  height: 120px;
+  height: 126px;
   object-fit: cover;
   display: block;
 }
@@ -430,7 +502,7 @@ loadMedia()
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 120px;
+  height: 126px;
   padding: var(--space-sm);
   color: var(--color-text-muted);
   font-size: 0.78rem;
@@ -469,6 +541,20 @@ loadMedia()
   color: #fff;
 }
 
+.admin-page__media-type {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-overlay-60);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
 .admin-page__media-preview-hint {
   position: absolute;
   top: 6px;
@@ -484,14 +570,9 @@ loadMedia()
   color: var(--text-overlay-60);
   opacity: 0;
   transition: all var(--duration-fast) ease;
-  cursor: pointer;
 }
 
-.admin-page__media-card:hover .admin-page__media-preview-hint {
-  opacity: 1;
-}
-
-.admin-page__media-img-button:hover .admin-page__media-preview-hint,
+.admin-page__media-card:hover .admin-page__media-preview-hint,
 .admin-page__media-img-button:focus-visible .admin-page__media-preview-hint {
   background: var(--accent-tint-50);
   color: #fff;
@@ -544,18 +625,23 @@ loadMedia()
 
 .admin-page__preview-modal {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+  max-width: 92vw;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.admin-page__preview-img {
+.admin-page__preview-img,
+.admin-page__preview-video {
   max-width: 90vw;
   max-height: 80vh;
   object-fit: contain;
   border-radius: var(--radius-md);
+}
+
+.admin-page__preview-video {
+  background: #000;
 }
 
 .admin-page__preview-info {
@@ -567,6 +653,11 @@ loadMedia()
   gap: var(--space-sm);
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.admin-page__preview-meta {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
 }
 
 .admin-page__preview-link {
@@ -601,5 +692,16 @@ loadMedia()
   background: var(--error-bg-20);
   border-color: var(--error-border-40);
   color: #f87171;
+}
+
+@media (max-width: 760px) {
+  .admin-page__media-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-page__media-toolbar__right {
+    margin-left: 0;
+  }
 }
 </style>
