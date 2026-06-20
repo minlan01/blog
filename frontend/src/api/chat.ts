@@ -58,8 +58,8 @@ export async function* streamChat(
           const data = JSON.parse(payload)
           if (data.error) throw new Error(data.error)
           if (data.content) yield data.content
-        } catch {
-          // skip malformed lines
+        } catch (error) {
+          if (error instanceof Error) throw error
         }
       }
     }

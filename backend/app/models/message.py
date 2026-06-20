@@ -19,10 +19,11 @@ class Message(Base):
     admin_reply_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # Self-referential: parent message's replies = all messages whose parent_id == this message's id
     replies: Mapped[list["Message"]] = relationship(
         "Message",
         backref="parent",
-        remote_side=[id],
+        primaryjoin="Message.id == foreign(remote(Message.parent_id))",
         lazy="selectin",
         cascade="all, delete-orphan",
     )

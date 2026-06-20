@@ -9,12 +9,11 @@ class Base(DeclarativeBase):
 
 
 def _build_engine():
-    """Build engine — use SQLite if MYSQL_HOST is unset or invalid for testing."""
-    db_path = settings.SQLITE_DB_PATH
-    if db_path == ":memory:" or db_path.endswith(".db"):
+    """Build engine for the configured database backend."""
+    if settings.DATABASE_BACKEND.lower() == "sqlite":
         # Use SQLite for testing or when explicitly configured
         return create_engine(
-            f"sqlite:///{db_path}",
+            settings.database_url,
             connect_args={"check_same_thread": False},
         )
     return create_engine(settings.database_url, pool_recycle=3600, pool_pre_ping=True)

@@ -84,6 +84,24 @@ def _migrate_image_data_mediumblob() -> None:
         conn.commit()
 
 
+def _migrate_image_object_storage_fields() -> None:
+    """Add object storage metadata columns to images if they don't exist."""
+    insp = inspect(engine)
+    if 'images' not in insp.get_table_names():
+        return
+    columns = {col['name'] for col in insp.get_columns('images')}
+    with engine.connect() as conn:
+        if 'object_key' not in columns:
+            conn.execute(text("ALTER TABLE images ADD COLUMN object_key VARCHAR(512) NULL"))
+            conn.commit()
+        if 'storage_backend' not in columns:
+            conn.execute(text("ALTER TABLE images ADD COLUMN storage_backend VARCHAR(32) DEFAULT 'local'"))
+            conn.commit()
+        if 'media_type' not in columns:
+            conn.execute(text("ALTER TABLE images ADD COLUMN media_type VARCHAR(20) DEFAULT 'image'"))
+            conn.commit()
+
+
 def _migrate_message_reply_fields() -> None:
     """Add admin_reply, admin_reply_at, and parent_id columns to messages if they don't exist."""
     insp = inspect(engine)
@@ -210,6 +228,7 @@ def init_db() -> None:
     _migrate_post_status()
     _migrate_comment_user_id_nullable()
     _migrate_image_data_mediumblob()
+    _migrate_image_object_storage_fields()
     _migrate_message_reply_fields()
     _migrate_user_auth_fields()
     _migrate_post_revision_table()

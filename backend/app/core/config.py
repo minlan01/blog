@@ -9,13 +9,17 @@ class Settings(BaseSettings):
     APP_NAME: str = "Personal Blog API"
     API_V1_PREFIX: str = "/api/v1"
     CORS_ORIGINS: str = "http://127.0.0.1:3710,http://localhost:3710"
+    DATABASE_BACKEND: str = "sqlite"
     SQLITE_DB_PATH: str = "blog.db"
-    MYSQL_HOST: str = "127.0.0.1"
-    MYSQL_PORT: int = 3715
-    MYSQL_USER: str = "root"
+    MYSQL_HOST: str = "mysql"
+    MYSQL_PORT: int = 3306
+    MYSQL_USER: str = "blog"
     MYSQL_PASSWORD: str = ""
     MYSQL_DATABASE: str = "blog"
-    LLM_BASE_URL: str = "http://localhost:2713"
+    LLM_BASE_URL: str = "https://api.deepseek.com"
+    LLM_API_KEY: str = ""
+    DEEPSEEK_API_KEY: str = ""
+    LLM_DEFAULT_MODEL: str = "deepseek-v4-flash"
     LLM_TIMEOUT: int = 120
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
@@ -35,8 +39,19 @@ class Settings(BaseSettings):
     GITHUB_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/github/callback"
 
     # Upload
-    MAX_UPLOAD_SIZE_MB: int = 5
-    UPLOAD_ALLOWED_TYPES: str = "image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+    MAX_UPLOAD_SIZE_MB: int = 1024
+    UPLOAD_ALLOWED_TYPES: str = (
+        "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,"
+        "video/mp4,video/webm,video/quicktime,video/x-matroska"
+    )
+
+    # Object storage
+    STORAGE_BACKEND: str = "local"
+    MINIO_ENDPOINT: str = "minio:9000"
+    MINIO_ACCESS_KEY: str = "minlan01"
+    MINIO_SECRET_KEY: str = ""
+    MINIO_BUCKET: str = "blog-media"
+    MINIO_SECURE: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -46,6 +61,8 @@ class Settings(BaseSettings):
 
     @cached_property
     def database_url(self) -> str:
+        if self.DATABASE_BACKEND.lower() == "sqlite":
+            return f"sqlite:///{self.SQLITE_DB_PATH}"
         return (
             f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
             f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
@@ -56,11 +73,23 @@ class Settings(BaseSettings):
     def upload_allowed_types_list(self) -> list[str]:
         return [t.strip() for t in self.UPLOAD_ALLOWED_TYPES.split(",") if t.strip()]
 
+    @cached_property
+    def llm_api_key(self) -> str:
+        return self.LLM_API_KEY or self.DEEPSEEK_API_KEY
+
+    @cached_property
+    def llm_base_url(self) -> str:
+        return self.LLM_BASE_URL.rstrip("/")
+
+    @cached_property
+    def use_minio(self) -> bool:
+        return self.STORAGE_BACKEND.lower() == "minio"
+
 
 settings = Settings()
 
 if not settings.SECRET_KEY:
-    if settings.SQLITE_DB_PATH == ":memory:":
+    if settings.DATABASE_BACKEND.lower() == "sqlite" and settings.SQLITE_DB_PATH == ":memory:":
         settings.SECRET_KEY = secrets.token_hex(32)
         warnings.warn("SECRET_KEY not set — using random key for tests. Set SECRET_KEY in .env for production.")
     else:

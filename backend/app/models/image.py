@@ -15,6 +15,9 @@ class Image(Base):
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     file_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    object_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    storage_backend: Mapped[str] = mapped_column(String(32), default="local")
+    media_type: Mapped[str] = mapped_column(String(20), default="image")
     size: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
@@ -25,4 +28,3 @@ class Image(Base):
         if self.file_path:
             return os.path.join("uploads", "images", self.file_path)
         return ""
-

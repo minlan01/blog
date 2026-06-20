@@ -1,7 +1,14 @@
 __pycache__
 *.pyc
+*.pyo
+*.pyd
 .venv
 .env
+.env.*
 *.db
 .pytest_cache
 .mypy_cache
+blog.db
+app.db
+tests/
+*.log

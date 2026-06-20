@@ -12,6 +12,7 @@ export function useImageUpload() {
       formData.append('file', file)
       const { data } = await http.post<{ url: string; filename: string }>('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 0,
       })
       return data.url.startsWith('http') ? data.url : `/api/v1${data.url}`
     } catch {

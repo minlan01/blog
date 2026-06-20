@@ -88,7 +88,7 @@ import ErrorBanner from '@/components/common/ErrorBanner.vue'
 import { getPosts, getCategories, getTags } from '@/api/blog'
 import { safeCall } from '@/api/http'
 import { useSiteStore } from '@/stores/site'
-import type { PostSummary, Category, Tag } from '@/types/blog'
+import type { PostSummary, Category, Tag, PaginatedResponse } from '@/types/blog'
 
 const siteStore = useSiteStore()
 const profile = computed(() => siteStore.profile)
@@ -129,7 +129,10 @@ async function loadData() {
   await siteStore.loadProfile()
 
   const [posts, cats, tagList] = await Promise.all([
-    safeCall(() => getPosts({ per_page: 50 }), []),
+    safeCall<PaginatedResponse<PostSummary>>(
+      () => getPosts({ per_page: 50 }),
+      { items: [], total: 0, page: 1, per_page: 50, total_pages: 0 }
+    ),
     safeCall(() => getCategories(), []),
     safeCall(() => getTags(), []),
   ])

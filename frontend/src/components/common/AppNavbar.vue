@@ -174,7 +174,9 @@ function handleOutsideClick(e: MouseEvent) {
   align-items: center;
   justify-content: space-between;
   height: 100%;
-  gap: var(--space-lg);
+  gap: clamp(10px, 1.2vw, var(--space-lg));
+  max-width: 100%;
+  min-width: 0;
 }
 
 .navbar__brand {
@@ -189,6 +191,8 @@ function handleOutsideClick(e: MouseEvent) {
   transition: opacity var(--duration-fast) ease;
   text-decoration: none;
   flex-shrink: 0;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .navbar__brand:hover {
@@ -204,6 +208,9 @@ function handleOutsideClick(e: MouseEvent) {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
 }
 
 .navbar__link {
@@ -238,6 +245,9 @@ function handleOutsideClick(e: MouseEvent) {
   border-radius: var(--radius-full);
   background: var(--color-surface);
   transition: border-color var(--duration-fast) ease;
+  flex: 1 1 220px;
+  min-width: 140px;
+  max-width: 380px;
 }
 
 .navbar__search:focus-within {
@@ -250,7 +260,8 @@ function handleOutsideClick(e: MouseEvent) {
 }
 
 .navbar__search-input {
-  width: 180px;
+  width: 100%;
+  min-width: 0;
   border: none;
   background: transparent;
   color: var(--color-text);
@@ -268,7 +279,9 @@ function handleOutsideClick(e: MouseEvent) {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0;
+  flex: 1 1 360px;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .navbar__theme-btn {
@@ -311,6 +324,8 @@ function handleOutsideClick(e: MouseEvent) {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .navbar__user-link {
@@ -318,6 +333,10 @@ function handleOutsideClick(e: MouseEvent) {
   font-weight: 500;
   color: var(--color-accent);
   text-decoration: none;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .navbar__admin-btn {
@@ -340,6 +359,7 @@ function handleOutsideClick(e: MouseEvent) {
   font-size: 0.78rem;
   color: var(--color-text-muted);
   transition: color var(--duration-fast) ease;
+  white-space: nowrap;
 }
 
 .navbar__logout-btn:hover {
@@ -454,6 +474,12 @@ function handleOutsideClick(e: MouseEvent) {
 
 /* Tablet — compact but still visible nav */
 @media (max-width: 1100px) {
+  .navbar__brand {
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .navbar__nav {
     gap: 4px;
   }
@@ -463,12 +489,24 @@ function handleOutsideClick(e: MouseEvent) {
     font-size: 0.85rem;
   }
 
-  .navbar__search-input {
-    width: 110px;
+  .navbar__search {
+    padding: 5px 12px;
+    flex-basis: 150px;
+    max-width: 190px;
+  }
+}
+
+@media (max-width: 980px) {
+  .navbar__brand {
+    max-width: 150px;
   }
 
   .navbar__search {
-    padding: 5px 12px;
+    display: none;
+  }
+
+  .navbar__actions {
+    flex: 0 0 auto;
   }
 }
 
