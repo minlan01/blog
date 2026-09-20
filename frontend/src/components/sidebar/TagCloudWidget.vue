@@ -1,10 +1,32 @@
 <template>
   <div class="tag-widget">
-    <h4 class="tag-widget__title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-      TAGS
-    </h4>
-    <div class="tag-widget__cloud" v-if="tags.length">
+    <div class="tag-widget__header">
+      <h4 class="tag-widget__title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        TAGS
+      </h4>
+      <div class="tag-widget__view-toggle" v-if="tags.length">
+        <button
+          class="tag-widget__view-btn"
+          :class="{ 'tag-widget__view-btn--active': view === 'cloud' }"
+          @click="view = 'cloud'"
+          title="标签云"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg>
+        </button>
+        <button
+          class="tag-widget__view-btn"
+          :class="{ 'tag-widget__view-btn--active': view === 'graph' }"
+          @click="view = 'graph'"
+          title="知识图谱"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Cloud view -->
+    <div class="tag-widget__cloud" v-if="tags.length && view === 'cloud'">
       <span
         v-for="tag in tags"
         :key="tag.id"
@@ -14,16 +36,24 @@
         {{ tag.name }}
       </span>
     </div>
+
+    <!-- Graph view -->
+    <TagGraph v-else-if="tags.length && view === 'graph'" :tags="tags" />
+
     <div v-else class="tag-widget__empty">暂无标签</div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Tag } from '@/types/blog'
+import TagGraph from '@/components/blog/TagGraph.vue'
 
 defineProps<{
   tags: Tag[]
 }>()
+
+const view = ref<'cloud' | 'graph'>('cloud')
 </script>
 
 <style scoped>
@@ -57,6 +87,13 @@ defineProps<{
   z-index: 1;
 }
 
+.tag-widget__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
 .tag-widget__title {
   display: flex;
   align-items: center;
@@ -66,10 +103,41 @@ defineProps<{
   font-weight: 600;
   letter-spacing: 0.14em;
   color: var(--color-text-heading);
-  margin: 0 0 var(--space-md);
+  margin: 0;
 }
 
 .tag-widget__title svg {
+  color: var(--color-accent);
+}
+
+.tag-widget__view-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+
+.tag-widget__view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: calc(var(--radius-sm) - 2px);
+  transition: all var(--duration-fast) ease;
+}
+
+.tag-widget__view-btn:hover {
+  color: var(--color-text);
+}
+
+.tag-widget__view-btn--active {
+  background: var(--accent-tint-15);
   color: var(--color-accent);
 }
 

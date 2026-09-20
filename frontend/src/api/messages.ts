@@ -17,18 +17,7 @@ export async function getMessages(): Promise<MessageRead[]> {
   return data
 }
 
-export interface CaptchaData {
-  question: string
-  token: string
-  ts: number
-}
-
-export async function getCaptcha(): Promise<CaptchaData> {
-  const { data } = await http.get<CaptchaData>('/messages/captcha')
-  return data
-}
-
-export async function createMessage(payload: { name: string; email?: string; content: string; parent_id?: number; captcha_answer?: number; captcha_token?: string; captcha_ts?: number }): Promise<MessageRead> {
+export async function createMessage(payload: { name: string; email: string; content: string; parent_id?: number }): Promise<MessageRead> {
   const { data } = await http.post<MessageRead>('/messages', payload)
   return data
 }

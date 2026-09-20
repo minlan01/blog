@@ -31,6 +31,9 @@
           <p class="auth-page__switch">
             <RouterLink to="/login">返回登录</RouterLink>
           </p>
+          <p class="auth-page__hint">
+            如果无法收到邮件，请联系管理员在后台重置你的密码。
+          </p>
         </div>
       </div>
     </div>
@@ -104,4 +107,5 @@ async function handleSend() {
 .auth-page__submit:disabled { opacity: 0.4; cursor: not-allowed; }
 .auth-page__switch { margin-top: var(--space-lg); text-align: center; font-size: 0.82rem; color: var(--color-text-muted); }
 .auth-page__switch a { color: var(--color-accent); font-weight: 500; }
+.auth-page__hint { margin-top: var(--space-md); text-align: center; font-size: 0.75rem; color: var(--color-text-muted); opacity: 0.6; }
 </style>

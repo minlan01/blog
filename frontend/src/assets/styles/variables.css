@@ -17,8 +17,8 @@
 
   /* 文字 */
   --color-text: #dcdce8;
-  --color-text-soft: #a0a0be;
-  --color-text-muted: #65658a;
+  --color-text-soft: #b0b0cc;
+  --color-text-muted: #8585a8;
   --color-text-heading: #eeeef8;
 
   /* 强调色 — 柔蓝紫 */
@@ -55,7 +55,7 @@
   /* 毛玻璃面板 */
   --glass-bg: rgba(10, 10, 20, 0.28);
   --glass-bg-strong: rgba(10, 10, 20, 0.28);
-  --glass-blur: blur(14px);
+  --glass-blur: blur(8px);
   --glass-border: rgba(255, 255, 255, 0.13);
   --glass-border-highlight: var(--border-medium);
   --glass-highlight: inset 0 1px 0 var(--border-strong);
@@ -70,8 +70,8 @@
 
   /* Panel preset — 毛玻璃：微透，可见代码雨穿过 */
   --glass-panel-bg: rgba(10, 10, 20, 0.28);
-  --glass-panel-blur: blur(14px);
-  --glass-panel-saturate: 1.8;
+  --glass-panel-blur: blur(8px);
+  --glass-panel-saturate: 1.6;
   --glass-panel-border: rgba(129, 140, 248, 0.25);
   --glass-panel-glow:
     0 0 40px rgba(129, 140, 248, 0.22),
@@ -80,19 +80,19 @@
 
   /* Card preset */
   --glass-card-bg: rgba(10, 10, 20, 0.24);
-  --glass-card-blur: blur(10px);
-  --glass-card-saturate: 1.8;
+  --glass-card-blur: blur(6px);
+  --glass-card-saturate: 1.6;
   --glass-card-shadow:
     0 4px 20px rgba(0, 0, 0, 0.15),
     var(--glass-highlight);
 
   /* Toolbar preset */
-  --glass-toolbar-blur: blur(30px);
-  --glass-toolbar-saturate: 1.8;
+  --glass-toolbar-blur: blur(16px);
+  --glass-toolbar-saturate: 1.6;
 
   /* Surface preset */
   --glass-surface-bg: var(--glass-bg-03);
-  --glass-surface-blur: blur(40px);
+  --glass-surface-blur: blur(20px);
   --glass-surface-saturate: 1.2;
   --glass-surface-border: var(--border-default);
 
@@ -162,6 +162,14 @@
   --error-bg-25: rgba(248, 113, 113, 0.25);
   --error-border-30: rgba(248, 113, 113, 0.30);
   --error-border-40: rgba(248, 113, 113, 0.40);
+
+  /* Success / Warning colors */
+  --success-main: #10b981;
+  --success-bg-06: rgba(16, 185, 129, 0.06);
+  --success-bg-12: rgba(16, 185, 129, 0.12);
+  --warning-main: #f59e0b;
+  --warning-bg-06: rgba(245, 158, 11, 0.06);
+  --warning-bg-12: rgba(245, 158, 11, 0.12);
 
   /* Special */
   --modal-bg: rgba(20, 20, 35, 0.95);
@@ -306,6 +314,14 @@
   --error-bg-25: rgba(194, 65, 12, 0.18);
   --error-border-30: rgba(194, 65, 12, 0.25);
   --error-border-40: rgba(194, 65, 12, 0.35);
+
+  /* Success / Warning (light) */
+  --success-main: #047857;
+  --success-bg-06: rgba(4, 120, 87, 0.06);
+  --success-bg-12: rgba(4, 120, 87, 0.10);
+  --warning-main: #b45309;
+  --warning-bg-06: rgba(180, 83, 9, 0.06);
+  --warning-bg-12: rgba(180, 83, 9, 0.10);
 
   /* Special */
   --modal-bg: rgba(250, 245, 238, 0.95);

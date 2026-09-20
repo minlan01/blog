@@ -8,13 +8,13 @@
 
       <!-- Desktop nav -->
       <nav class="navbar__nav">
-        <RouterLink to="/" class="navbar__link">首页</RouterLink>
-        <RouterLink to="/archive" class="navbar__link">归档</RouterLink>
-        <RouterLink to="/posts" class="navbar__link">文章</RouterLink>
-        <RouterLink to="/link" class="navbar__link">友链</RouterLink>
-        <RouterLink to="/message-board" class="navbar__link">留言板</RouterLink>
-        <RouterLink to="/ai-chat" class="navbar__link">AI</RouterLink>
-        <RouterLink to="/about" class="navbar__link">关于</RouterLink>
+        <RouterLink to="/" class="navbar__link" @mouseenter="prefetch('/')">首页</RouterLink>
+        <RouterLink to="/archive" class="navbar__link" @mouseenter="prefetch('/archive')">归档</RouterLink>
+        <RouterLink to="/posts" class="navbar__link" @mouseenter="prefetch('/posts')">文章</RouterLink>
+        <RouterLink to="/link" class="navbar__link" @mouseenter="prefetch('/link')">友链</RouterLink>
+        <RouterLink to="/message-board" class="navbar__link" @mouseenter="prefetch('/message-board')">留言板</RouterLink>
+        <RouterLink v-if="isAdmin" to="/ai-chat" class="navbar__link" @mouseenter="prefetch('/ai-chat')">AI</RouterLink>
+        <RouterLink to="/about" class="navbar__link" @mouseenter="prefetch('/about')">关于</RouterLink>
       </nav>
 
       <div class="navbar__actions">
@@ -41,11 +41,21 @@
 
         <RouterLink v-if="!isLoggedIn" to="/login" class="navbar__login-btn">登录</RouterLink>
         <div v-else class="navbar__user-menu">
-          <RouterLink to="/profile" class="navbar__user-link">{{ username }}</RouterLink>
+          <RouterLink to="/profile" class="navbar__user-avatar-link" :title="username">
+            <img
+              v-if="userAvatar"
+              :src="userAvatar"
+              :alt="username"
+              class="navbar__user-avatar"
+            />
+            <span v-else class="navbar__user-avatar navbar__user-avatar--fallback">
+              {{ (username || '?').charAt(0).toUpperCase() }}
+            </span>
+          </RouterLink>
           <RouterLink v-if="isAdmin" to="/admin" class="navbar__admin-btn">管理</RouterLink>
           <button class="navbar__logout-btn" @click="handleLogout">退出</button>
         </div>
-        <button class="navbar__hamburger" @click="mobileOpen = !mobileOpen" aria-label="菜单">
+        <button class="navbar__hamburger" :class="{ 'navbar__hamburger--active': mobileOpen }" @click="mobileOpen = !mobileOpen" aria-label="菜单">
           <span></span><span></span><span></span>
         </button>
       </div>
@@ -68,7 +78,7 @@
         <RouterLink to="/posts" class="navbar__mobile-link" @click="mobileOpen = false">文章</RouterLink>
         <RouterLink to="/link" class="navbar__mobile-link" @click="mobileOpen = false">友链</RouterLink>
         <RouterLink to="/message-board" class="navbar__mobile-link" @click="mobileOpen = false">留言板</RouterLink>
-        <RouterLink to="/ai-chat" class="navbar__mobile-link" @click="mobileOpen = false">AI</RouterLink>
+        <RouterLink v-if="isAdmin" to="/ai-chat" class="navbar__mobile-link" @click="mobileOpen = false">AI</RouterLink>
         <RouterLink to="/about" class="navbar__mobile-link" @click="mobileOpen = false">关于</RouterLink>
 
         <div class="navbar__mobile-divider"></div>
@@ -85,15 +95,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSiteStore } from '@/stores/site'
 import { useTheme } from '@/composables/useTheme'
 
-defineProps<{
+const props = defineProps<{
   isLoggedIn?: boolean
   username?: string
   isAdmin?: boolean
+  avatar?: string
 }>()
 
 const emit = defineEmits<{
@@ -102,14 +113,31 @@ const emit = defineEmits<{
 
 const siteStore = useSiteStore()
 const router = useRouter()
+
+// User avatar: no fallback to site owner avatar — use first-letter placeholder instead
+const userAvatar = computed(() => props.avatar || '')
 const { theme, mode, toggle } = useTheme()
 
 const scrolled = ref(false)
 const mobileOpen = ref(false)
 const searchQuery = ref('')
 
-function toggleTheme() {
-  toggle()
+// ── 路由预加载：hover 链接时提前解析路由，触发 JS chunk 下载 ──
+const prefetched = new Set<string>()
+function prefetch(path: string) {
+  if (prefetched.has(path)) return
+  prefetched.add(path)
+  const route = router.resolve(path)
+  route.matched.forEach((r) => {
+    const comp = r.components?.default as any
+    if (typeof comp === 'function') {
+      comp()
+    }
+  })
+}
+
+function toggleTheme(event: MouseEvent) {
+  toggle(event)
 }
 
 function handleScroll() {
@@ -339,6 +367,37 @@ function handleOutsideClick(e: MouseEvent) {
   white-space: nowrap;
 }
 
+.navbar__user-avatar-link {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.navbar__user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--glass-border);
+  transition: all var(--duration-fast) ease;
+}
+
+.navbar__user-avatar-link:hover .navbar__user-avatar {
+  border-color: var(--color-accent);
+  transform: scale(1.08);
+}
+
+.navbar__user-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-tint-15);
+  color: var(--color-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
 .navbar__admin-btn {
   font-size: 0.8rem;
   font-weight: 500;
@@ -381,6 +440,19 @@ function handleOutsideClick(e: MouseEvent) {
   background: var(--color-text);
   border-radius: 1px;
   transition: transform var(--duration-fast) ease, opacity var(--duration-fast) ease;
+  transform-origin: center;
+}
+
+/* 汉堡按钮变 X 动画 */
+.navbar__hamburger--active span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.navbar__hamburger--active span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.navbar__hamburger--active span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
 }
 
 /* Mobile menu */
@@ -501,21 +573,15 @@ function handleOutsideClick(e: MouseEvent) {
     max-width: 150px;
   }
 
-  .navbar__search {
-    display: none;
-  }
-
-  .navbar__actions {
-    flex: 0 0 auto;
-  }
-}
-
-/* Small tablet — collapse to hamburger */
-@media (max-width: 768px) {
+  /* 平板即折叠为汉堡菜单，避免 769-980px 区间无搜索入口 */
   .navbar__nav { display: none; }
   .navbar__user-menu { display: none; }
   .navbar__search { display: none; }
   .navbar__hamburger { display: flex; }
   .navbar__mobile-menu { display: flex; }
+
+  .navbar__actions {
+    flex: 0 0 auto;
+  }
 }
 </style>

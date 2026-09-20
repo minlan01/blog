@@ -100,5 +100,4 @@ onMounted(async () => {
   animation: spin 0.8s linear infinite;
   margin: 0 auto var(--space-md);
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 </style>

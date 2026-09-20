@@ -1,73 +1,91 @@
 <template>
   <section class="admin-page">
-    <div class="container">
+    <div class="admin-layout">
+      <!-- 顶部 header（全宽） -->
       <header class="admin-page__header">
         <div class="admin-page__header-left">
-          <button class="admin-page__back" @click="$router.push('/')">&larr; 返回首页</button>
+          <button class="admin-btn" @click="$router.push('/')">&larr; 返回首页</button>
           <h1 class="admin-page__title">后台管理</h1>
         </div>
-        <button class="admin-page__create-btn" @click="$router.push('/create-post')">
+        <button class="admin-btn admin-btn--primary" @click="$router.push('/create-post')">
           + 写文章
         </button>
       </header>
 
-      <div class="admin-page__tabs">
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'posts' }"
-          @click="activeTab = 'posts'; onTabChange('posts')"
-        >文章管理</button>
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'categories' }"
-          @click="activeTab = 'categories'; onTabChange('categories')"
-        >分类管理</button>
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'tags' }"
-          @click="activeTab = 'tags'; onTabChange('tags')"
-        >标签管理</button>
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'stats' }"
-          @click="activeTab = 'stats'; onTabChange('stats')"
-        >站点统计</button>
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'friend-links' }"
-          @click="activeTab = 'friend-links'; onTabChange('friend-links')"
-        >友链管理</button>
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'users' }"
-          @click="activeTab = 'users'; onTabChange('users')"
-        >用户管理</button>
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'comments' }"
-          @click="activeTab = 'comments'; onTabChange('comments')"
-        >评论审核</button>
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'messages' }"
-          @click="activeTab = 'messages'; onTabChange('messages')"
-        >留言管理</button>
-        <button
-          class="admin-page__tab"
-          :class="{ active: activeTab === 'media' }"
-          @click="activeTab = 'media'; onTabChange('media')"
-        >媒体库</button>
-      </div>
+      <!-- 左侧导航 + 右侧内容 -->
+      <div class="admin-body">
+        <aside class="admin-sidebar">
+          <div class="admin-sidebar__group">
+            <div class="admin-sidebar__label">内容</div>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'posts' }" @click="activeTab = 'posts'; onTabChange('posts')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              文章管理
+            </button>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'media' }" @click="activeTab = 'media'; onTabChange('media')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              媒体库
+            </button>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'; onTabChange('comments')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              评论审核
+            </button>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'messages' }" @click="activeTab = 'messages'; onTabChange('messages')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              留言管理
+            </button>
+          </div>
 
-      <AdminPostsTab v-if="activeTab === 'posts'" :key="'posts-' + refreshKey" @delete="openDeleteModal" />
-      <AdminCategoriesTab v-if="activeTab === 'categories'" :key="'categories-' + refreshKey" @delete="openDeleteModal" />
-      <AdminTagsTab v-if="activeTab === 'tags'" :key="'tags-' + refreshKey" @delete="openDeleteModal" />
-      <AdminStatsTab v-if="activeTab === 'stats'" :key="'stats-' + refreshKey" />
-      <AdminFriendLinksTab v-if="activeTab === 'friend-links'" :key="'friend-links-' + refreshKey" @delete="openDeleteModal" />
-      <AdminUsersTab v-if="activeTab === 'users'" :key="'users-' + refreshKey" @delete="openDeleteModal" />
-      <AdminCommentsTab v-if="activeTab === 'comments'" :key="'comments-' + refreshKey" />
-      <AdminMessagesTab v-if="activeTab === 'messages'" :key="'messages-' + refreshKey" />
-      <AdminMediaTab v-if="activeTab === 'media'" :key="'media-' + refreshKey" />
+          <div class="admin-sidebar__group">
+            <div class="admin-sidebar__label">组织</div>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'categories' }" @click="activeTab = 'categories'; onTabChange('categories')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              分类管理
+            </button>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'tags' }" @click="activeTab = 'tags'; onTabChange('tags')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              标签管理
+            </button>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'friend-links' }" @click="activeTab = 'friend-links'; onTabChange('friend-links')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              友链管理
+            </button>
+          </div>
+
+          <div class="admin-sidebar__group">
+            <div class="admin-sidebar__label">系统</div>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'stats' }" @click="activeTab = 'stats'; onTabChange('stats')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              站点统计
+            </button>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'site' }" @click="activeTab = 'site'; onTabChange('site')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              站点设置
+            </button>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'; onTabChange('users')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              用户管理
+            </button>
+            <button class="admin-nav-item" :class="{ active: activeTab === 'tokens' }" @click="activeTab = 'tokens'; onTabChange('tokens')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+              API 令牌
+            </button>
+          </div>
+        </aside>
+
+        <main class="admin-content">
+          <AdminPostsTab v-if="activeTab === 'posts'" :key="'posts-' + refreshKey" @delete="openDeleteModal" />
+          <AdminCategoriesTab v-if="activeTab === 'categories'" :key="'categories-' + refreshKey" @delete="openDeleteModal" />
+          <AdminTagsTab v-if="activeTab === 'tags'" :key="'tags-' + refreshKey" @delete="openDeleteModal" />
+          <AdminStatsTab v-if="activeTab === 'stats'" :key="'stats-' + refreshKey" />
+          <AdminSiteTab v-if="activeTab === 'site'" :key="'site-' + refreshKey" />
+          <AdminFriendLinksTab v-if="activeTab === 'friend-links'" :key="'friend-links-' + refreshKey" @delete="openDeleteModal" />
+          <AdminUsersTab v-if="activeTab === 'users'" :key="'users-' + refreshKey" @delete="openDeleteModal" />
+          <AdminCommentsTab v-if="activeTab === 'comments'" :key="'comments-' + refreshKey" />
+          <AdminMessagesTab v-if="activeTab === 'messages'" :key="'messages-' + refreshKey" />
+          <AdminMediaTab v-if="activeTab === 'media'" :key="'media-' + refreshKey" />
+          <AdminTokensTab v-if="activeTab === 'tokens'" :key="'tokens-' + refreshKey" />
+        </main>
+      </div>
 
       <Teleport to="body">
         <Transition name="modal">
@@ -98,15 +116,17 @@ import AdminPostsTab from '@/components/admin/AdminPostsTab.vue'
 import AdminCategoriesTab from '@/components/admin/AdminCategoriesTab.vue'
 import AdminTagsTab from '@/components/admin/AdminTagsTab.vue'
 import AdminStatsTab from '@/components/admin/AdminStatsTab.vue'
+import AdminSiteTab from '@/components/admin/AdminSiteTab.vue'
 import AdminFriendLinksTab from '@/components/admin/AdminFriendLinksTab.vue'
 import AdminUsersTab from '@/components/admin/AdminUsersTab.vue'
 import AdminCommentsTab from '@/components/admin/AdminCommentsTab.vue'
 import AdminMessagesTab from '@/components/admin/AdminMessagesTab.vue'
 import AdminMediaTab from '@/components/admin/AdminMediaTab.vue'
+import AdminTokensTab from '@/components/admin/AdminTokensTab.vue'
 
 const toast = useToastStore()
 
-const activeTab = ref<'posts' | 'categories' | 'tags' | 'stats' | 'friend-links' | 'users' | 'comments' | 'messages' | 'media'>('posts')
+const activeTab = ref<'posts' | 'categories' | 'tags' | 'stats' | 'site' | 'friend-links' | 'users' | 'comments' | 'messages' | 'media' | 'tokens'>('posts')
 
 const loadedTabs = new Set<string>(['posts'])
 
@@ -166,15 +186,148 @@ async function confirmDelete() {
 
 <style scoped>
 .admin-page {
-  padding: var(--space-3xl) 0;
+  padding: var(--space-xl) 0;
   min-height: 60vh;
+}
+
+.admin-layout {
+  max-width: var(--container-max, 1200px);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.admin-body {
+  display: flex;
+  gap: var(--space-lg);
+  align-items: flex-start;
+}
+
+/* 左侧导航 */
+.admin-sidebar {
+  width: 200px;
+  min-width: 200px;
+  position: sticky;
+  top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  -webkit-backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  box-shadow: var(--shadow-card);
+}
+
+.admin-sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-sidebar__group + .admin-sidebar__group {
+  border-top: 1px solid var(--glass-border);
+  padding-top: var(--space-lg);
+  margin-top: var(--space-sm);
+}
+
+.admin-sidebar__label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  padding: 6px 10px 8px;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-soft);
+  background: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  text-align: left;
+  width: 100%;
+}
+
+.admin-nav-item:hover {
+  background: var(--glass-bg-08);
+  color: var(--color-text-heading);
+}
+
+.admin-nav-item.active {
+  color: #fff;
+  background: var(--color-accent-gradient);
+  box-shadow: 0 2px 8px rgba(129, 140, 248, 0.25);
+}
+
+[data-theme="light"] .admin-nav-item.active {
+  color: #fff;
+}
+
+/* 右侧内容 */
+.admin-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 移动端：侧边栏变横向滚动 */
+@media (max-width: 768px) {
+  .admin-body {
+    flex-direction: column;
+  }
+
+  .admin-sidebar {
+    width: 100%;
+    min-width: 0;
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+  }
+
+  .admin-sidebar__group {
+    flex-direction: row;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .admin-sidebar__group + .admin-sidebar__group {
+    border-top: none;
+    border-left: 1px solid var(--glass-border);
+    padding-top: 0;
+    padding-left: var(--space-sm);
+  }
+
+  .admin-sidebar__label {
+    display: none;
+  }
+
+  .admin-nav-item {
+    width: auto;
+    white-space: nowrap;
+    padding: 6px 12px;
+  }
 }
 
 .admin-page__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-xl);
+  margin-bottom: var(--space-lg);
+  max-width: var(--container-max, 1200px);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 var(--space-lg);
 }
 
 .admin-page__header-left {
@@ -229,44 +382,12 @@ async function confirmDelete() {
   font-size: 0.82rem;
 }
 
-.admin-page__tabs {
-  display: flex;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-xl);
-  padding: var(--space-sm);
-  background: var(--glass-surface-bg);
-  border: 1px solid var(--glass-surface-border);
-  border-radius: var(--radius-md);
-  backdrop-filter: var(--glass-card-blur);
-}
-
-.admin-page__tab {
-  font-size: 0.9rem;
-  font-weight: 500;
-  padding: 8px 18px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  background: var(--glass-bg-02);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-}
-
-.admin-page__tab:hover {
-  border-color: var(--border-strong);
-  color: var(--color-text);
-}
-
-.admin-page__tab.active {
-  border-color: var(--accent-tint-40);
-  background: var(--accent-tint-15);
-  color: var(--color-accent);
-}
+/* Tab 样式已统一到 base.css .admin-tabs / .admin-tab */
 
 /* Shared styles for admin tab child components. Scoped styles do not
    automatically reach inside child components, so these use :deep(). */
 .admin-page :deep(.admin-page__panel) {
-  animation: fadeIn 0.2s ease;
+  animation: adminFadeIn 0.2s ease;
 }
 
 .admin-page :deep(.admin-page__toolbar) {
@@ -535,27 +656,7 @@ async function confirmDelete() {
   border-color: var(--border-heavy-2);
 }
 
-.admin-page :deep(.admin-btn) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  padding: 5px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-soft);
-  background: var(--glass-bg-02);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-  margin-right: 0;
-}
-
-.admin-page :deep(.admin-btn:disabled) {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+/* 按钮样式统一使用 base.css 全局 .admin-btn */
 
 .admin-page :deep(.admin-page__badge) {
   display: inline-flex;
@@ -570,7 +671,7 @@ async function confirmDelete() {
 
 .admin-page :deep(.admin-page__badge--approved) {
   background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
+  color: var(--success-main);
   border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
@@ -586,31 +687,13 @@ async function confirmDelete() {
   border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
-.admin-page :deep(.admin-btn--edit) {
-  color: var(--color-accent);
-  background: var(--accent-tint-06);
-  border-color: var(--accent-tint-30);
-}
-
-.admin-page :deep(.admin-btn--edit:hover:not(:disabled)) {
-  background: var(--accent-tint-15);
-}
-
-.admin-page :deep(.admin-btn--delete) {
-  color: var(--color-text-muted);
-  background: var(--glass-bg-02);
-}
-
-.admin-page :deep(.admin-btn--delete:hover:not(:disabled)) {
-  color: #f87171;
-  border-color: var(--error-border-30);
-}
+/* edit/delete 按钮样式统一在 base.css */
 
 .admin-page__panel {
-  animation: fadeIn 0.2s ease;
+  animation: adminFadeIn 0.2s ease;
 }
 
-@keyframes fadeIn {
+@keyframes adminFadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -811,16 +894,7 @@ async function confirmDelete() {
   border-color: var(--border-heavy-2);
 }
 
-.admin-btn {
-  font-size: 0.78rem;
-  font-weight: 500;
-  padding: 5px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
-  margin-right: 6px;
-}
+/* 按钮统一样式见 base.css */
 
 .admin-page__badge {
   font-size: 0.72rem;
@@ -831,7 +905,7 @@ async function confirmDelete() {
 
 .admin-page__badge--approved {
   background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
+  color: var(--success-main);
   border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
@@ -863,7 +937,7 @@ async function confirmDelete() {
 }
 
 .admin-btn--delete:hover {
-  color: #f87171;
+  color: var(--error-main);
   border-color: var(--error-border-30);
 }
 
@@ -904,7 +978,7 @@ async function confirmDelete() {
 }
 
 .modal__text strong {
-  color: #f87171;
+  color: var(--error-main);
 }
 
 .modal__actions {
@@ -936,7 +1010,7 @@ async function confirmDelete() {
 .modal__btn--confirm {
   border: 1px solid var(--error-border-40);
   background: var(--error-bg-12);
-  color: #f87171;
+  color: var(--error-main);
 }
 
 .modal__btn--confirm:hover {
@@ -984,8 +1058,13 @@ async function confirmDelete() {
     flex-direction: column;
   }
 
+  .admin-page :deep(.admin-table-wrap) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .admin-page :deep(.admin-table) {
-    min-width: 680px;
+    min-width: 600px;
   }
 
   .admin-page :deep(.admin-table th),

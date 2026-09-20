@@ -11,6 +11,7 @@
     </Teleport>
 
     <!-- 博客主内容区 -->
+
     <Transition name="content-reveal">
       <div v-if="entered" class="home__body">
 
@@ -20,13 +21,17 @@
 
             <!-- 左侧：文章卡片主内容区 -->
             <main class="home__main">
-              <!-- 文章卡片列表 -->
+              <!-- 文章卡片列表 — Bento Grid 布局 -->
               <div v-if="allPosts.length" class="home__posts">
                 <PostCard
                   v-for="(post, idx) in allPosts"
                   :key="post.id"
                   :post="post"
                   :index="idx"
+                  :class="[
+                    'scroll-reveal-up',
+                    { 'card--bento-lg': idx === 0 && post.is_featured }
+                  ]"
                 />
               </div>
 
@@ -65,7 +70,10 @@
 
           <!-- 查看全部文章 — 独立于 grid，全宽居中 -->
           <div v-if="allPosts.length" class="home__more">
-            <RouterLink to="/posts" class="home__more-btn">查看全部文章 &rarr;</RouterLink>
+            <RouterLink to="/posts" class="home__more-btn" ref="moreBtnRef">
+              <span>查看全部文章</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </RouterLink>
           </div>
         </div>
 
@@ -80,6 +88,7 @@ import { useRoute } from 'vue-router'
 import OpeningScreen from '@/components/landing/OpeningScreen.vue'
 import PostCard from '@/components/blog/PostCard.vue'
 import ProfileWidget from '@/components/sidebar/ProfileWidget.vue'
+import { useMagnetic } from '@/composables/useMagnetic'
 import SiteStatsWidget from '@/components/sidebar/SiteStatsWidget.vue'
 import CategoryWidget from '@/components/sidebar/CategoryWidget.vue'
 import TagCloudWidget from '@/components/sidebar/TagCloudWidget.vue'
@@ -96,6 +105,8 @@ const profile = computed(() => siteStore.profile)
 const route = useRoute()
 const showOpening = ref(false)
 const entered = ref(false)
+const moreBtnRef = ref<HTMLElement | null>(null)
+useMagnetic(moreBtnRef, 0.25)
 const allPosts = ref<PostSummary[]>([])
 const categories = ref<Category[]>([])
 const tags = ref<Tag[]>([])
@@ -130,8 +141,8 @@ async function loadData() {
 
   const [posts, cats, tagList] = await Promise.all([
     safeCall<PaginatedResponse<PostSummary>>(
-      () => getPosts({ per_page: 50 }),
-      { items: [], total: 0, page: 1, per_page: 50, total_pages: 0 }
+      () => getPosts({ per_page: 7, featured: true }),
+      { items: [], total: 0, page: 1, per_page: 7, total_pages: 0 }
     ),
     safeCall(() => getCategories(), []),
     safeCall(() => getTags(), []),
@@ -205,24 +216,37 @@ onMounted(() => {
 }
 
 .home__posts {
-  columns: 2;
-  column-gap: var(--space-md);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+}
+
+/* Bento Grid：第一篇 featured 文章跨 2 列 */
+.home__posts :deep(.card--bento-lg) {
+  grid-column: 1 / -1;
+}
+
+.home__posts :deep(.card--bento-lg .card__cover) {
+  aspect-ratio: 21/9;
+}
+
+.home__posts :deep(.card--bento-lg .card__title) {
+  font-size: 1.3rem;
 }
 
 .home__posts :deep(.card) {
-  break-inside: avoid;
-  margin-bottom: var(--space-md);
+  transition: all var(--duration-fast) var(--ease-out);
 }
 
-/* Remove line clamps so card height adapts to content */
+/* Bento 卡片取消瀑布流的高度自适应限制 */
 .home__posts :deep(.card__summary) {
-  -webkit-line-clamp: unset;
-  display: block;
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
 }
 
 .home__posts :deep(.card__title) {
-  -webkit-line-clamp: unset;
-  display: block;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
 }
 
 /* Empty state */
@@ -268,26 +292,32 @@ onMounted(() => {
 .home__more-btn {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   padding: 12px 28px;
-  border: 1px solid var(--glass-border);
+  border: none;
   border-radius: var(--radius-md);
-  background: var(--glass-card-bg);
-  backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
-  -webkit-backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
-  color: var(--color-text-heading);
+  background: var(--color-accent-gradient);
+  color: #fff;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
-  transition: all var(--duration-fast) ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: all var(--duration-fast) var(--ease-out);
+  box-shadow: 0 4px 20px rgba(129, 140, 248, 0.25);
+  cursor: pointer;
 }
 
 .home__more-btn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: var(--accent-tint-06);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-elevated);
+  filter: brightness(1.1);
+  box-shadow: 0 6px 24px rgba(129, 140, 248, 0.35);
+  transform: translateY(-2px);
+}
+
+.home__more-btn:active {
+  transform: translateY(0);
+}
+
+[data-theme="light"] .home__more-btn {
+  color: #fff;
 }
 
 /* ========================================
@@ -298,6 +328,20 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
+}
+
+.home__music-float {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 50;
+}
+
+@media (max-width: 768px) {
+  .home__music-float {
+    left: 12px;
+    bottom: 12px;
+  }
 }
 
 .home__sidebar-sticky {
@@ -342,7 +386,7 @@ onMounted(() => {
   }
 
   .home__posts {
-    columns: 1;
+    grid-template-columns: 1fr;
   }
 }
 </style>

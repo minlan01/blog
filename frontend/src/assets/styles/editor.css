@@ -1,5 +1,17 @@
+/* ========================================
+   文章编辑器样式（写文章 / 编辑文章）
+   ======================================== */
+
 .editor {
   padding: var(--space-2xl) 0 var(--space-3xl);
+}
+
+/* 编辑页容器：桌面占屏幕宽度 2/3（编辑器需要更宽的工作区），
+   平板/移动端回退默认的近全宽；1440px 上限防超宽屏拉太长 */
+@media (min-width: 1024px) {
+  .editor .narrow-container {
+    width: min(66.67vw, 1440px);
+  }
 }
 
 .editor__header {
@@ -24,24 +36,26 @@
 .editor__back {
   font-size: 0.82rem;
   color: var(--color-text-muted);
-  background: none;
+  background: var(--glass-card-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 5px 12px;
   cursor: pointer;
   transition: all var(--duration-fast) ease;
   white-space: nowrap;
+  backdrop-filter: var(--glass-card-blur);
+  -webkit-backdrop-filter: var(--glass-card-blur);
 }
 
 .editor__back:hover {
   color: var(--color-accent);
-  border-color: rgba(129, 140, 248, 0.3);
+  border-color: var(--accent-tint-35);
 }
 
 .editor__publish {
   padding: 8px 24px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--color-accent-gradient);
   color: #fff;
   font-weight: 600;
@@ -51,12 +65,38 @@
 }
 
 .editor__publish:hover:not(:disabled) {
-  opacity: 0.9;
-  box-shadow: 0 4px 16px rgba(129, 140, 248, 0.25);
+  opacity: 0.92;
+  box-shadow: 0 4px 16px var(--accent-tint-25);
+  transform: translateY(-1px);
 }
 
 .editor__publish:disabled {
   opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 存草稿按钮 — 次要描边风格 */
+.editor__draft-btn {
+  padding: 8px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur);
+  -webkit-backdrop-filter: var(--glass-card-blur);
+  color: var(--color-text-soft);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.editor__draft-btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--accent-tint-08);
+}
+
+.editor__draft-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -70,15 +110,18 @@
 .editor__error {
   padding: var(--space-sm) var(--space-md);
   margin-bottom: var(--space-md);
-  border: 1px solid rgba(248, 113, 113, 0.25);
+  border: 1px solid var(--error-border-30);
   border-radius: var(--radius-sm);
-  background: rgba(248, 113, 113, 0.06);
-  color: #f87171;
+  background: var(--error-bg-06);
+  color: var(--error-main);
   font-size: 0.82rem;
 }
 
 .editor__form {
   display: grid;
+  /* minmax(0,1fr)：md-editor 的 min-content 宽度很大，会把默认 auto 轨道撑到
+     远超容器宽度，导致标题/摘要等组件整体溢出底板卡片 */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-md);
 }
 
@@ -99,48 +142,69 @@
   color: var(--color-text-soft);
 }
 
+/* 标题输入框 — 统一为带边框风格，与其他控件一致 */
 .editor__title-input {
   padding: 12px var(--space-md);
-  border: none;
-  border-bottom: 1px solid var(--color-border);
-  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur);
+  -webkit-backdrop-filter: var(--glass-card-blur);
   color: var(--color-text-heading);
   font-size: 1.3rem;
   font-weight: 600;
-  transition: border-color var(--duration-fast) ease;
+  transition: all var(--duration-fast) ease;
 }
 
 .editor__title-input::placeholder {
   color: var(--color-text-muted);
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .editor__title-input:focus {
   outline: none;
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--accent-tint-08);
 }
 
+/* 通用输入框 */
 .editor__input {
   padding: 10px var(--space-md);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-deep);
+  border-radius: var(--radius-md);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur);
+  -webkit-backdrop-filter: var(--glass-card-blur);
   color: var(--color-text);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   transition: all var(--duration-fast) ease;
 }
 
 .editor__input:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.08);
+  box-shadow: 0 0 0 3px var(--accent-tint-08);
 }
 
+.editor__input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+/* select 下拉框 */
+.editor__input option {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* 文本域 */
 .editor__textarea {
   padding: var(--space-md);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-deep);
+  border-radius: var(--radius-md);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur);
+  -webkit-backdrop-filter: var(--glass-card-blur);
   color: var(--color-text);
   font-family: var(--font-mono);
   font-size: 0.85rem;
@@ -151,13 +215,13 @@
 
 .editor__textarea::placeholder {
   color: var(--color-text-muted);
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .editor__textarea:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.08);
+  box-shadow: 0 0 0 3px var(--accent-tint-08);
 }
 
 .editor__textarea--short {
@@ -169,25 +233,36 @@
   align-items: center;
   gap: var(--space-sm);
   font-size: 0.85rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-soft);
   cursor: pointer;
 }
 
 .editor__inline-label input[type="checkbox"] {
   accent-color: var(--color-accent);
+  width: 16px;
+  height: 16px;
 }
 
+/* 封面上传行 */
 .editor__cover-row {
   display: flex;
   gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.editor__cover-row .editor__input {
+  flex: 1;
+  min-width: 200px;
 }
 
 .editor__upload-btn {
   white-space: nowrap;
   padding: 10px 16px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-deep);
+  border-radius: var(--radius-md);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur);
+  -webkit-backdrop-filter: var(--glass-card-blur);
   color: var(--color-accent);
   font-size: 0.82rem;
   cursor: pointer;
@@ -196,6 +271,7 @@
 
 .editor__upload-btn:hover:not(:disabled) {
   border-color: var(--color-accent);
+  background: var(--accent-tint-08);
 }
 
 .editor__upload-btn:disabled {
@@ -207,35 +283,39 @@
   display: none;
 }
 
-.editor__content-toolbar {
-  display: flex;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-xs);
-}
-
-.editor__toolbar-btn {
-  white-space: nowrap;
-  padding: 6px 14px;
+/* Markdown 编辑器容器 — 包裹 MdEditor 做圆角和边框 */
+.editor__md-wrap {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-deep);
-  color: var(--color-accent);
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: all var(--duration-fast) ease;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--glass-card-bg);
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
-.editor__toolbar-btn:hover:not(:disabled) {
+.editor__md-wrap:focus-within {
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--accent-tint-08);
 }
 
-.editor__toolbar-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+/* 注意：MdEditor 内部背景透明化的覆盖样式放在全局 md-editor-override.css 中，
+   因为 scoped 样式无法穿透到第三方组件内部元素。 */
 
 @media (max-width: 640px) {
   .editor__row {
     grid-template-columns: 1fr;
+  }
+
+  .editor__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .editor__header-actions {
+    justify-content: flex-end;
+  }
+
+  .editor__cover-row {
+    flex-direction: column;
   }
 }

@@ -88,6 +88,17 @@ md.renderer.rules.heading_open = function (tokens: any, idx: number, options: an
   return self.renderToken(tokens, idx, options)
 }
 
+// 为图片添加 lazy loading，减少首屏加载
+const defaultImage = md.renderer.rules.image || function (tokens: any, idx: number, options: any, env: any, self: any) {
+  return self.renderToken(tokens, idx, options)
+}
+md.renderer.rules.image = function (tokens: any, idx: number, options: any, env: any, self: any) {
+  const token = tokens[idx]
+  token.attrSet('loading', 'lazy')
+  token.attrSet('decoding', 'async')
+  return defaultImage(tokens, idx, options, env, self)
+}
+
 export function renderMarkdown(source: string): string {
   return md.render(source)
 }

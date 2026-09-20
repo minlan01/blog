@@ -5,7 +5,7 @@
         <span class="comment-item__author">{{ comment.author_name || '匿名' }}</span>
         <span class="comment-item__date">{{ formatDate(comment.created_at) }}</span>
       </div>
-      <p class="comment-item__content">{{ comment.content }}</p>
+      <p class="comment-item__content" v-html="renderedContent"></p>
       <div class="comment-item__actions">
         <button
           v-if="isLoggedIn"
@@ -17,6 +17,10 @@
           class="comment-item__action comment-item__action--delete"
           @click="emit('delete', comment.id)"
         >删除</button>
+        <CommentEmojiBar
+          :comment-id="comment.id"
+          :is-logged-in="isLoggedIn || false"
+        />
       </div>
     </div>
 
@@ -61,7 +65,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import MarkdownIt from 'markdown-it'
 import type { CommentRead } from '@/types/blog'
+import CommentEmojiBar from './CommentEmojiBar.vue'
+
+// 评论用 inline-only markdown（安全：不支持块级 HTML/图片/脚本）
+const mdInline = new MarkdownIt({ html: false, breaks: true, linkify: true })
 
 const props = defineProps<{
   comment: CommentRead
@@ -71,6 +80,12 @@ const props = defineProps<{
   isLoggedIn?: boolean
   isReply?: boolean
 }>()
+
+// 渲染评论内容为安全 HTML（inline 限定）
+const renderedContent = computed(() => {
+  if (!props.comment?.content) return ''
+  return (mdInline as any).renderInline(props.comment.content)
+})
 
 const emit = defineEmits<{
   (e: 'reply', commentId: number): void
@@ -141,8 +156,10 @@ function handleSubmitReply() {
 
 .comment-item__actions {
   display: flex;
+  align-items: center;
   gap: var(--space-sm);
   margin-top: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .comment-item__action {

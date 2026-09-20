@@ -17,32 +17,31 @@
       </div>
     </div>
 
-    <div class="admin-page__stats-grid">
-      <div class="admin-page__stats-panel">
-        <h3 class="admin-page__stats-title">站点页面</h3>
-        <table class="admin-table">
-          <thead>
-            <tr><th>路径</th><th>页面</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in statsTopPages" :key="p.path">
-              <td style="font-family:var(--font-mono);font-size:0.82rem;">{{ p.path }}</td>
-              <td>{{ p.label }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="admin-page__stats-panel">
-        <h3 class="admin-page__stats-title">设备分布</h3>
-        <div class="admin-page__bars">
-          <div v-for="d in statsDevices" :key="d.name" class="admin-page__bar-item">
-            <div class="admin-page__bar-header">
-              <span>{{ d.name }}</span>
-              <span style="font-family:var(--font-mono);font-size:0.78rem;color:var(--color-text-muted);">{{ d.pct }}%</span>
-            </div>
-            <div class="admin-page__bar-track">
-              <div class="admin-page__bar-fill" :style="{ width: d.pct + '%' }"></div>
-            </div>
+    <div class="admin-page__stats-panel" style="margin-bottom: var(--space-lg);">
+      <h3 class="admin-page__stats-title">站点页面</h3>
+      <table class="admin-table">
+        <thead>
+          <tr><th>路径</th><th>页面</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="p in statsTopPages" :key="p.path">
+            <td style="font-family:var(--font-mono);font-size:0.82rem;">{{ p.path }}</td>
+            <td>{{ p.label }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="admin-page__stats-panel">
+      <h3 class="admin-page__stats-title">设备分布</h3>
+      <div class="admin-page__bars">
+        <div v-for="d in statsDevices" :key="d.name" class="admin-page__bar-item">
+          <div class="admin-page__bar-header">
+            <span>{{ d.name }}</span>
+            <span style="font-family:var(--font-mono);font-size:0.78rem;color:var(--color-text-muted);">{{ d.pct }}%</span>
+          </div>
+          <div class="admin-page__bar-track">
+            <div class="admin-page__bar-fill" :style="{ width: d.pct + '%' }"></div>
           </div>
         </div>
       </div>
@@ -124,9 +123,12 @@ loadStats()
   align-items: center;
   gap: 12px;
   padding: var(--space-md);
-  background: var(--color-surface);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  -webkit-backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
 }
 
 .admin-page__stat-icon {
@@ -147,15 +149,15 @@ loadStats()
 }
 
 .admin-page__stat-value {
-  font-size: 1.15rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--color-text-heading);
   font-family: var(--font-mono);
 }
 
 .admin-page__stat-label {
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  color: var(--color-text-soft);
 }
 
 .admin-page__stats-grid {
@@ -165,10 +167,13 @@ loadStats()
 }
 
 .admin-page__stats-panel {
-  padding: var(--space-md);
-  background: var(--color-surface);
+  padding: var(--space-lg);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  -webkit-backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
 }
 
 .admin-page__stats-title {
@@ -199,7 +204,7 @@ loadStats()
 
 .admin-page__bar-track {
   height: 8px;
-  background: var(--color-surface-hover);
+  background: var(--glass-bg-15);
   border-radius: var(--radius-full);
   overflow: hidden;
 }

@@ -21,7 +21,6 @@
         @submit.prevent="handleSubmitReply"
       >
         <div class="msg-item__reply-fields">
-          <input v-model="replyName" class="msg-item__reply-input" placeholder="你的名字" />
           <textarea
             v-model="replyContent"
             class="msg-item__reply-textarea"
@@ -30,7 +29,7 @@
           ></textarea>
         </div>
         <div class="msg-item__reply-actions">
-          <button type="submit" class="msg-item__reply-submit" :disabled="!replyName.trim() || !replyContent.trim()">回复</button>
+          <button type="submit" class="msg-item__reply-submit" :disabled="!replyContent.trim()">回复</button>
           <button type="button" class="msg-item__reply-cancel" @click="emit('cancel-reply')">取消</button>
         </div>
       </form>
@@ -42,6 +41,9 @@
           :key="reply.id"
           :msg="reply"
           :is-admin="isAdmin"
+          :is-logged-in="isLoggedIn"
+          :current-username="currentUsername"
+          :current-email="currentEmail"
           :replying-to="replyingTo"
           :is-reply="true"
           @reply="emit('reply', $event)"
@@ -61,6 +63,9 @@ import type { MessageRead } from '@/api/messages'
 const props = defineProps<{
   msg: MessageRead
   isAdmin: boolean
+  isLoggedIn: boolean
+  currentUsername: string
+  currentEmail: string
   replyingTo: number | null
   isReply?: boolean
 }>()
@@ -68,11 +73,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'reply', msgId: number): void
   (e: 'delete', msgId: number): void
-  (e: 'submit-reply', parentId: number, payload: { name: string; email?: string; content: string }): void
+  (e: 'submit-reply', parentId: number, payload: { name: string; email: string; content: string }): void
   (e: 'cancel-reply'): void
 }>()
 
-const replyName = ref('')
 const replyContent = ref('')
 
 function formatCreatedAt(dateStr: string): string {
@@ -86,12 +90,15 @@ function formatCreatedAt(dateStr: string): string {
 }
 
 function handleSubmitReply() {
-  if (!replyName.value.trim() || !replyContent.value.trim()) return
+  if (!replyContent.value.trim()) return
+  // 登录用数据库信息，未登录用匿名
+  const name = props.isLoggedIn ? props.currentUsername : '匿名用户'
+  const email = props.isLoggedIn ? props.currentEmail : 'anonymous@guest.local'
   emit('submit-reply', props.msg.id, {
-    name: replyName.value.trim(),
+    name,
+    email,
     content: replyContent.value.trim(),
   })
-  replyName.value = ''
   replyContent.value = ''
 }
 </script>
@@ -197,7 +204,6 @@ function handleSubmitReply() {
   background: var(--error-bg-12);
 }
 
-/* Reply form */
 .msg-item__reply-form {
   margin-top: var(--space-sm);
   display: flex;
@@ -209,23 +215,6 @@ function handleSubmitReply() {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.msg-item__reply-input {
-  max-width: 200px;
-  padding: 6px 10px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-family: inherit;
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color var(--duration-fast) ease;
-}
-
-.msg-item__reply-input:focus {
-  border-color: var(--color-accent);
 }
 
 .msg-item__reply-textarea {
@@ -241,6 +230,7 @@ function handleSubmitReply() {
   resize: vertical;
   min-height: 50px;
   transition: border-color var(--duration-fast) ease;
+  box-sizing: border-box;
 }
 
 .msg-item__reply-textarea:focus {
@@ -289,7 +279,6 @@ function handleSubmitReply() {
   border-color: var(--border-strong);
 }
 
-/* Nested replies */
 .msg-item__replies {
   margin-top: var(--space-sm);
   display: flex;

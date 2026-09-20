@@ -31,6 +31,18 @@ export async function getTags() {
   return data
 }
 
+export interface TagWithCount {
+  id: number
+  name: string
+  slug: string
+  post_count: number
+}
+
+export async function getTagsCloud(): Promise<TagWithCount[]> {
+  const { data } = await http.get<TagWithCount[]>('/tags/cloud')
+  return data
+}
+
 export async function getFriendLinks() {
   const { data } = await http.get<FriendLink[]>('/friend-links')
   return data
@@ -55,5 +67,15 @@ export async function getStats() {
 
 export async function getRelatedPosts(slug: string, limit = 4) {
   const { data } = await http.get<PostSummary[]>(`/posts/${slug}/related`, { params: { limit } })
+  return data
+}
+
+export interface AdjacentPost {
+  slug: string
+  title: string
+}
+
+export async function getAdjacentPosts(slug: string): Promise<{ prev: AdjacentPost | null; next: AdjacentPost | null }> {
+  const { data } = await http.get(`/posts/${slug}/adjacent`)
   return data
 }

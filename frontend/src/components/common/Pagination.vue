@@ -50,9 +50,11 @@ const visiblePages = computed(() => {
 <style scoped>
 .pagination {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
+  row-gap: var(--space-xs);
   padding: var(--space-xl) 0;
 }
 
@@ -109,5 +111,18 @@ const visiblePages = computed(() => {
 
 .pagination__page--ellipsis {
   cursor: default;
+}
+
+@media (max-width: 480px) {
+  .pagination__btn {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+
+  .pagination__page {
+    width: 30px;
+    height: 30px;
+    font-size: 0.75rem;
+  }
 }
 </style>

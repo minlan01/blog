@@ -14,7 +14,7 @@
           </div>
           <div class="opening__terminal-body">
             <p class="opening__prompt">
-              <span class="opening__user">minlan01</span><span class="opening__at">@</span><span class="opening__host">blog</span><span class="opening__colon">:</span><span class="opening__path">~</span><span class="opening__dollar">$</span>
+              <span class="opening__user">赤夜冥岚</span><span class="opening__at">@</span><span class="opening__host">blog</span><span class="opening__colon">:</span><span class="opening__path">~</span><span class="opening__dollar">$</span>
               <span class="opening__cmd">{{ displayedCmd }}<span class="opening__cursor">_</span></span>
             </p>
             <div class="opening__output" v-if="showOutput">
@@ -107,7 +107,8 @@ function initMatrix() {
       }
       drops[i]++
     }
-    animFrame = requestAnimationFrame(draw)
+    // 降帧到 ~20fps，减少 CPU 占用，不阻塞主线程渲染
+    setTimeout(() => { animFrame = requestAnimationFrame(draw) }, 50)
   }
   draw()
 }
@@ -132,7 +133,13 @@ function handleResize() {
 }
 
 onMounted(() => {
-  initMatrix()
+  // 延迟到浏览器空闲时启动 Canvas，避免阻塞首屏渲染
+  const start = () => initMatrix()
+  if ('requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(start, { timeout: 600 })
+  } else {
+    setTimeout(start, 200)
+  }
   setTimeout(typeCmd, 400)
   window.addEventListener('resize', handleResize)
 })
@@ -187,9 +194,9 @@ onUnmounted(() => {
 /* Terminal Window */
 .opening__terminal {
   width: 100%;
-  background: rgba(13, 13, 13, 0.75);
-  backdrop-filter: blur(100px);
-  -webkit-backdrop-filter: blur(100px);
+  background: rgba(13, 13, 13, 0.88);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -278,10 +285,6 @@ onUnmounted(() => {
   margin-top: var(--space-sm);
   animation: fadeIn 0.5s ease forwards;
   opacity: 0;
-}
-
-@keyframes fadeIn {
-  to { opacity: 1; }
 }
 
 /* Actions */

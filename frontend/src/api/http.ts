@@ -3,6 +3,7 @@ import axios from 'axios'
 export const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 30000,
+  withCredentials: true,  // 携带 httpOnly cookie（refresh_token）
 })
 
 const apiCache = new Map<string, { data: any; expiry: number }>()
@@ -29,7 +30,7 @@ function getCacheKey(config: any): string | null {
 const pendingRequests = new Map<string, Promise<any>>()
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   if (token) {
     config.headers = config.headers || {}
     config.headers['Authorization'] = `Bearer ${token}`
@@ -113,49 +114,48 @@ http.interceptors.response.use(
       const url = error.config?.url || ''
       const originalRequest = error.config as any
 
-      if (status === 401 && originalRequest && !originalRequest._retry && !url.includes('/auth/')) {
-        const refreshToken = localStorage.getItem('refresh_token')
-        if (refreshToken && !isRefreshing) {
-          originalRequest._retry = true
-          isRefreshing = true
+        if (status === 401 && originalRequest && !originalRequest._retry && !url.includes('/auth/')) {
+          // refresh_token 已移至 httpOnly cookie，不再从 localStorage 读取
+          if (!isRefreshing) {
+            originalRequest._retry = true
+            isRefreshing = true
 
-          try {
-            const { data } = await axios.post(
-              (import.meta.env.VITE_API_BASE_URL || '/api/v1') + '/auth/refresh',
-              { refresh_token: refreshToken }
-            )
-            localStorage.setItem('token', data.access_token)
-            localStorage.setItem('refresh_token', data.refresh_token)
-            onRefreshed(data.access_token)
-            originalRequest.headers.Authorization = `Bearer ${data.access_token}`
-            return http(originalRequest)
-          } catch (refreshErr) {
-            onRefreshFailed(refreshErr)
-            localStorage.removeItem('token')
-            localStorage.removeItem('refresh_token')
-            // Give user feedback before redirecting
-            sessionStorage.setItem('auth_expired', '1')
-            window.location.href = '/login'
-          } finally {
-            isRefreshing = false
+            try {
+              const { data } = await axios.post(
+                (import.meta.env.VITE_API_BASE_URL || '/api/v1') + '/auth/refresh',
+                {},
+                { withCredentials: true }  // 携带 httpOnly refresh_token cookie
+              )
+              sessionStorage.setItem('token', data.access_token)
+              onRefreshed(data.access_token)
+              originalRequest.headers.Authorization = `Bearer ${data.access_token}`
+              return http(originalRequest)
+            } catch (refreshErr) {
+              onRefreshFailed(refreshErr)
+              sessionStorage.removeItem('token')
+              // Give user feedback before redirecting
+              sessionStorage.setItem('auth_expired', '1')
+              window.location.href = '/login'
+            } finally {
+              isRefreshing = false
+            }
+          }
+
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              refreshSubscribers.push({ resolve, reject })
+            }).then(token => {
+              originalRequest.headers.Authorization = `Bearer ${token}`
+              return http(originalRequest)
+            })
           }
         }
 
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            refreshSubscribers.push({ resolve, reject })
-          }).then(token => {
-            originalRequest.headers.Authorization = `Bearer ${token}`
-            return http(originalRequest)
-          })
-        }
-      }
-
       if (!error.response) {
-        console.warn(`[API] 缃戠粶涓嶅彲杈? ${url}`)
+        console.warn(`[API] Network unavailable: ${url}`)
       } else if (status === 404) {
       } else if (status && status >= 500) {
-        console.error(`[API] 鏈嶅姟绔敊璇?${status}: ${url}`)
+        console.error(`[API] Server error ${status}: ${url}`)
       }
     }
     return Promise.reject(error)

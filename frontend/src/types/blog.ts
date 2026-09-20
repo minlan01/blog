@@ -21,6 +21,7 @@ export interface PostSummary {
   published_at: string
   updated_at?: string | null
   is_featured: boolean
+  featured_order?: number
   view_count: number
   status: string
   category?: Category | null
@@ -42,6 +43,13 @@ export interface SiteProfile {
   location: string
   icp_filing?: string
   icp_link?: string
+  display_name?: string
+  about_role?: string
+  about_summary?: string
+  about_me?: string
+  about_project?: string
+  project_highlights?: string
+  tech_stack?: string
 }
 
 export interface User {

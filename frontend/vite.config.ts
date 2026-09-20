@@ -10,6 +10,17 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          'markdown-vendor': ['markdown-it', 'highlight.js'],
+          'editor-vendor': ['md-editor-v3'],
+        },
+      },
+    },
+  },
   server: {
     host: '127.0.0.1',
     port: 3710,

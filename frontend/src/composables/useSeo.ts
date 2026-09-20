@@ -9,8 +9,8 @@ interface SeoParams {
   type?: string
 }
 
-const SITE_NAME = 'minlan01'
-const DEFAULT_DESCRIPTION = '一个技术博客'
+const SITE_NAME = '赤夜冥岚的编程小屋'
+const DEFAULT_DESCRIPTION = '赤夜冥岚的编程小屋 — 基于代码与文字构建的个人技术空间'
 const DEFAULT_IMAGE = '/og-image.png'
 
 function setMeta(attr: string, key: string, content: string) {

@@ -43,10 +43,22 @@
                 </span>
               </td>
               <td>
-                <label class="admin-toggle" :title="post.is_featured ? '取消精选' : '设为精选'">
-                  <input type="checkbox" :checked="post.is_featured" @change="toggleFeatured(post)" />
-                  <span class="admin-toggle__track"><span class="admin-toggle__thumb"></span></span>
-                </label>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <label class="admin-toggle" :title="post.is_featured ? '取消精选' : '设为精选（显示在首页）'">
+                    <input type="checkbox" :checked="post.is_featured" @change="toggleFeatured(post)" />
+                    <span class="admin-toggle__track"><span class="admin-toggle__thumb"></span></span>
+                  </label>
+                  <input
+                    v-if="post.is_featured"
+                    type="number"
+                    style="width:48px;padding:3px 6px;font-size:0.75rem;border:1px solid var(--glass-border);border-radius:var(--radius-sm);background:var(--glass-bg-12);color:var(--color-text);"
+                    :value="post.featured_order || 0"
+                    :title="'首页排序（数字越大越靠前）'"
+                    min="0"
+                    max="999"
+                    @change="updateFeaturedOrder(post, $event)"
+                  />
+                </div>
               </td>
               <td class="admin-table__date">{{ formatDate(post.published_at) }}</td>
               <td class="admin-table__actions">
@@ -93,8 +105,22 @@ async function toggleFeatured(post: PostSummary) {
   try {
     await updatePost(post.id, { is_featured: !post.is_featured })
     post.is_featured = !post.is_featured
+    if (post.is_featured && !post.featured_order) {
+      post.featured_order = 0
+    }
   } catch {
     toast.error('切换精选状态失败，请稍后重试')
+  }
+}
+
+async function updateFeaturedOrder(post: PostSummary, e: Event) {
+  const order = parseInt((e.target as HTMLInputElement).value) || 0
+  try {
+    await updatePost(post.id, { featured_order: order })
+    post.featured_order = order
+    toast.success('首页排序已更新')
+  } catch {
+    toast.error('排序更新失败')
   }
 }
 

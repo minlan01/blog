@@ -157,37 +157,37 @@ h1, h2, h3, h4, h5, h6 {
    ======================================== */
 
 /* ========================================
-   Page Transitions — Vue Transition
-   进入时用不透明背景兜底，避免 transform 合成层阻断 backdrop-filter 闪烁
+   Page Transitions — Vue Transition (mode: out-in)
+   先淡出旧页面，再淡入新页面，不会重叠闪烁
    ======================================== */
 
+/* ── 旧页面淡出：快速消失 ── */
+/* ── 液态页面过渡（2026 趋势）── */
+/* 旧页面快速淡出 + 模糊 */
 .page-fade-leave-active {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  transition: opacity 0.8s ease-out;
+  transition: opacity 0.15s ease-out, filter 0.15s ease-out;
 }
 
 .page-fade-leave-to {
   opacity: 0;
+  filter: blur(8px);
 }
 
-/* New page emerges from below */
+/* 新页面液态涌入：缩放+圆角+模糊消除 */
 .page-fade-enter-active {
-  transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+  transition: opacity 0.35s var(--ease-out), transform 0.35s var(--ease-out), filter 0.35s var(--ease-out);
 }
 
 .page-fade-enter-from {
   opacity: 0;
-  transform: translateY(16px);
+  transform: translateY(16px) scale(0.98);
+  filter: blur(6px);
 }
 
 /*
   During enter transition, transform creates a compositing layer that
   blocks inner backdrop-filter. Override panel backgrounds to be more
-  opaque (same hue as --glass-panel-bg, higher alpha) so the visual
-  handoff is seamless when the class is removed.
+  opaque so the visual handoff is seamless when the class is removed.
 */
 .page-fade-enter-active .container,
 .page-fade-enter-active .narrow-container,
@@ -267,4 +267,426 @@ h1, h2, h3, h4, h5, h6 {
   background-size: 128px 128px;
   pointer-events: none;
   z-index: 0;
+}
+
+/* ========================================
+   View Transitions API
+   主题切换圆形展开 + 页面切换平滑过渡
+   Safari 17- 不支持，会直接跳变（优雅降级）
+   ======================================== */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+/* 尊重用户减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── View Transition 性能优化 ──
+   避免快照期间毛玻璃重绘导致卡顿 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  /* 禁止混合模式，减少合成层数量 */
+  contain: paint;
+  will-change: clip-path;
+}
+
+/* ════════════════════════════════════════
+   移动端性能降级
+   小屏设备关闭所有 backdrop-filter，
+   用不透明背景替代，大幅降低 GPU 负载
+   ════════════════════════════════════════ */
+@media (max-width: 768px) {
+  :root {
+    --glass-blur: none;
+    --glass-panel-blur: none;
+    --glass-card-blur: none;
+    --glass-toolbar-blur: none;
+    --glass-surface-blur: none;
+  }
+
+  [data-theme="dark"] {
+    --glass-bg: rgba(10, 10, 20, 0.75);
+    --glass-panel-bg: rgba(10, 10, 20, 0.72);
+    --glass-card-bg: rgba(15, 15, 25, 0.65);
+    --glass-surface-bg: rgba(15, 15, 25, 0.60);
+  }
+
+  [data-theme="light"] {
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-panel-bg: rgba(252, 250, 246, 0.88);
+    --glass-card-bg: rgba(255, 255, 255, 0.82);
+    --glass-surface-bg: rgba(255, 255, 255, 0.78);
+  }
+}
+
+/* ════════════════════════════════════════
+   超小屏微调（≤ 480px）
+   ════════════════════════════════════════ */
+@media (max-width: 480px) {
+  :root {
+    --space-xs: 4px;
+    --space-sm: 6px;
+    --space-md: 10px;
+    --space-lg: 14px;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  h1 { font-size: 1.6rem !important; }
+  h2 { font-size: 1.3rem !important; }
+}
+
+/* ── 骨架屏 shimmer 动画（全局工具类）── */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-soft) 0%,
+    var(--glass-card-bg) 50%,
+    var(--color-bg-soft) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── 文章字号缩放变量 ── */
+:root {
+  --article-font-scale: 1;
+}
+
+.detail__content.prose {
+  font-size: calc(1.05rem * var(--article-font-scale));
+}
+
+.detail__content.prose p,
+.detail__content.prose li {
+  font-size: calc(1em * var(--article-font-scale));
+}
+
+.detail__content.prose h2 {
+  font-size: calc(1.5em * var(--article-font-scale));
+}
+
+.detail__content.prose h3 {
+  font-size: calc(1.25em * var(--article-font-scale));
+}
+
+.detail__content.prose pre {
+  font-size: calc(0.875em * var(--article-font-scale));
+}
+
+/* ── CSS Scroll-Driven Animation（2026 趋势）── */
+/* 零 JS，GPU 加速，元素滚动进入视口时渐入 */
+@supports (animation-timeline: view()) {
+  .scroll-reveal {
+    animation: scroll-fade-in linear both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 40%;
+  }
+
+  .scroll-reveal-up {
+    animation: scroll-slide-up linear both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 40%;
+  }
+
+  @keyframes scroll-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scroll-slide-up {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* 不支持的浏览器降级：直接显示 */
+@supports not (animation-timeline: view()) {
+  .scroll-reveal,
+  .scroll-reveal-up {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* prefers-reduced-motion 尊重用户偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal,
+  .scroll-reveal-up {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ── Kinetic Typography（2026 趋势）── */
+/* 文字扫光效果：渐变光带从左到右扫过 */
+.kinetic-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-text-heading) 0%,
+    var(--color-text-heading) 40%,
+    var(--color-accent) 50%,
+    var(--color-text-heading) 60%,
+    var(--color-text-heading) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: text-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes text-shimmer {
+  0%, 100% { background-position: 200% 0; }
+  50% { background-position: -200% 0; }
+}
+
+/* 标题逐字渐入 */
+@supports (animation-timeline: view()) {
+  .kinetic-title {
+    animation: kinetic-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 10% entry 50%;
+  }
+
+  @keyframes kinetic-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kinetic-shimmer { animation: none; }
+  .kinetic-title { animation: none !important; opacity: 1 !important; }
+}
+
+/* ── 全局通用 keyframes（避免各组件重复定义）── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── 后台管理统一按钮系统（毛玻璃风格）── */
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-soft);
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  -webkit-backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.admin-btn:hover {
+  border-color: var(--accent-tint-30);
+  color: var(--color-text-heading);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.admin-btn:active {
+  transform: translateY(0);
+}
+
+.admin-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* 主按钮 — accent 渐变 */
+.admin-btn--primary {
+  color: #fff;
+  background: var(--color-accent-gradient);
+  border-color: transparent;
+}
+
+[data-theme="light"] .admin-btn--primary {
+  color: #fff;
+}
+
+.admin-btn--primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 16px rgba(129, 140, 248, 0.3);
+}
+
+/* 编辑按钮 */
+.admin-btn--edit {
+  color: var(--color-accent);
+  background: var(--accent-tint-06);
+  border-color: var(--accent-tint-25);
+}
+
+.admin-btn--edit:hover {
+  background: var(--accent-tint-15);
+  border-color: var(--color-accent);
+}
+
+/* 删除/危险按钮 */
+.admin-btn--danger {
+  color: var(--color-text-muted);
+  background: var(--glass-bg-04);
+}
+
+.admin-btn--danger:hover {
+  color: var(--error-main);
+  border-color: var(--error-border-30);
+  background: var(--error-bg-06);
+}
+
+/* 成功按钮 */
+.admin-btn--success {
+  color: var(--success-main);
+  background: var(--success-bg-06);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.admin-btn--success:hover {
+  background: var(--success-bg-12);
+  border-color: var(--success-main);
+}
+
+/* 小号按钮 */
+.admin-btn--sm {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+}
+
+/* ── 后台统一 Tab（毛玻璃胶囊）── */
+.admin-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px;
+  background: var(--glass-surface-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  -webkit-backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  box-shadow: var(--shadow-card);
+}
+
+.admin-tab {
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.admin-tab:hover {
+  color: var(--color-text);
+  background: var(--glass-bg-08);
+}
+
+.admin-tab.active {
+  color: #fff;
+  background: var(--color-accent-gradient);
+  box-shadow: 0 2px 8px rgba(129, 140, 248, 0.25);
+}
+
+[data-theme="light"] .admin-tab.active {
+  color: #fff;
+}
+
+/* ── 后台统一面板（毛玻璃卡片）── */
+.admin-panel {
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  -webkit-backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+}
+
+/* ── 后台统一输入框 ── */
+.admin-input {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg-12);
+  color: var(--color-text);
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.admin-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.admin-input:focus {
+  border-color: var(--color-accent);
+  background: var(--glass-bg-20);
+  box-shadow: 0 0 0 3px var(--accent-tint-06);
+}
+
+/* ── 后台统一工具栏 ── */
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-lg);
 }

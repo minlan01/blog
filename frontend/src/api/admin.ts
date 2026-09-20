@@ -21,7 +21,11 @@ export interface PostCreatePayload {
   status?: string
 }
 
-export type PostUpdatePayload = Partial<PostCreatePayload>
+export type PostUpdatePayload = Partial<PostCreatePayload> & {
+  is_featured?: boolean
+  featured_order?: number
+  status?: string
+}
 
 export async function createPost(data: PostCreatePayload) {
   const { data: result } = await http.post<PostDetail>('/admin/posts', data)
@@ -121,7 +125,7 @@ export async function getUsers(): Promise<User[]> {
   return data
 }
 
-export async function updateUser(id: number, data: { role?: string; bio?: string; avatar?: string }) {
+export async function updateUser(id: number, data: { role?: string; bio?: string; avatar?: string; new_password?: string }) {
   const { data: result } = await http.put<User>(`/admin/users/${id}`, data)
   return result
 }
@@ -157,6 +161,7 @@ export interface AdminMessageRead {
   parent_id?: number | null
   admin_reply?: string | null
   admin_reply_at?: string | null
+  status?: string
   created_at: string
 }
 
@@ -167,6 +172,11 @@ export async function getAdminMessages(): Promise<AdminMessageRead[]> {
 
 export async function replyMessage(id: number, content: string): Promise<AdminMessageRead> {
   const { data } = await http.put<AdminMessageRead>(`/admin/messages/${id}/reply`, { content })
+  return data
+}
+
+export async function updateMessageStatus(id: number, status: string): Promise<AdminMessageRead> {
+  const { data } = await http.put<AdminMessageRead>(`/admin/messages/${id}/status`, { status })
   return data
 }
 
@@ -182,12 +192,24 @@ export interface ImageItem {
   url: string
   size: number
   mime_type?: string
-  media_type?: 'image' | 'video'
+  media_type?: 'image' | 'video' | 'music' | 'audio'
+  uploaded_by?: string
   created_at: string
 }
 
 export async function getImages(): Promise<ImageItem[]> {
   const { data } = await http.get<ImageItem[]>('/upload')
+  return data
+}
+
+export interface MusicTrack {
+  id: number
+  filename: string
+  url: string
+}
+
+export async function getMusicTracks(): Promise<MusicTrack[]> {
+  const { data } = await http.get<MusicTrack[]>('/upload/music')
   return data
 }
 
@@ -253,6 +275,7 @@ export async function importPosts(file: File) {
   formData.append('file', file)
   const { data } = await http.post('/admin/posts/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 0,
   })
   return data
 }
@@ -272,11 +295,57 @@ export async function rejectComment(id: number) {
 // ── Upload Image ──
 
 export async function uploadImage(file: File): Promise<ImageItem> {
+  // 大文件上传不设超时（视频/音频可能很大）
   const formData = new FormData()
   formData.append('file', file)
-  const { data } = await http.post<ImageItem>('/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 0,
-  })
+
+  async function doUpload(): Promise<ImageItem> {
+    const { data } = await http.post<ImageItem>('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 0,
+    })
+    return data
+  }
+
+  try {
+    return await doUpload()
+  } catch (e: any) {
+    // 401 时 token 可能过期，等 1 秒让拦截器刷新后重试
+    if (e?.response?.status === 401) {
+      await new Promise(r => setTimeout(r, 1000))
+      return await doUpload()
+    }
+    throw e
+  }
+}
+
+// ── Personal Access Tokens ──
+
+export interface ApiToken {
+  id: number
+  name: string
+  scopes: string
+  expires_at: string | null
+  last_used_at: string | null
+  created_at: string
+  revoked: boolean
+}
+
+export interface ApiTokenCreateResponse {
+  token: string
+  token_info: ApiToken
+}
+
+export async function getTokens(): Promise<ApiToken[]> {
+  const { data } = await http.get<ApiToken[]>('/tokens')
   return data
+}
+
+export async function createToken(payload: { name: string; scopes?: string; expires_in_days?: number }): Promise<ApiTokenCreateResponse> {
+  const { data } = await http.post<ApiTokenCreateResponse>('/tokens', payload)
+  return data
+}
+
+export async function revokeToken(id: number): Promise<void> {
+  await http.delete(`/tokens/${id}`)
 }

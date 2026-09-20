@@ -3,18 +3,17 @@
     <div class="container narrow-container">
       <header class="about__hero">
         <div class="about__hero-content">
-          <div class="about__avatar-wrap">
-            <img src="/images/about-avatar.png" alt="赤夜冥岚头像" class="about__avatar" />
+          <div class="about__avatar-wrap" ref="avatarWrap" @mousemove="onAvatarMove" @mouseleave="resetAvatar">
+            <img :src="siteAvatar" alt="头像" class="about__avatar" />
             <span class="about__status">MINLAN01</span>
+            <div class="about__avatar-glow"></div>
           </div>
 
           <div class="about__intro">
             <span class="about__kicker">ABOUT</span>
-            <h1>赤夜冥岚</h1>
-            <p class="about__role">开发者 / 技术记录者 / 个人博客维护者</p>
-            <p class="about__summary">
-              这里是我沉淀学习、整理项目经验和记录想法的地方。比起把知识停留在脑子里，我更喜欢把一次次实践、踩坑和复盘写下来，让它们变成以后还能被自己和别人重新使用的内容。
-            </p>
+            <h1>{{ displayName }}</h1>
+            <p class="about__role">{{ aboutRole }}</p>
+            <p class="about__summary">{{ aboutSummary }}</p>
           </div>
         </div>
       </header>
@@ -25,15 +24,7 @@
           <h2>关于我</h2>
         </div>
         <div class="about__text">
-          <p>
-            你好，我是赤夜冥岚，也可以叫我 minlan01。来自中国云南，平时主要关注编程、Web 开发、自动化工具和各种能把想法做成真实作品的技术。
-          </p>
-          <p>
-            这个博客不只是一个文章展示页，它更像我的个人工作台：记录学习过程，整理解决问题的方法，也保存一些项目从零到可用之间的真实痕迹。
-          </p>
-          <p>
-            我希望这里的内容保持直接、可复用、能落地。哪怕只是一个很小的问题，只要它被认真写下来，下次遇到时就会少走一点弯路。
-          </p>
+          <p v-for="(p, i) in aboutMeParagraphs" :key="i">{{ p }}</p>
         </div>
       </section>
 
@@ -45,7 +36,7 @@
           <h2>联系方式</h2>
         </div>
         <div class="about__contact-grid">
-          <a class="about__contact-item" href="mailto:746408662@qq.com">
+          <a class="about__contact-item" :href="`mailto:${profile?.email || '746408662@qq.com'}`">
             <span class="about__contact-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -54,11 +45,11 @@
             </span>
             <span>
               <strong>EMAIL</strong>
-              <em>746408662@qq.com</em>
+              <em>{{ profile?.email || '746408662@qq.com' }}</em>
             </span>
           </a>
 
-          <a class="about__contact-item" href="https://github.com/minlan01" target="_blank" rel="noopener">
+          <a class="about__contact-item" :href="profile?.github_url || 'https://github.com/minlan01'" target="_blank" rel="noopener">
             <span class="about__contact-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                 <path d="M12 .5A11.5 11.5 0 0 0 8.36 22.9c.58.1.79-.25.79-.56v-2.02c-3.2.7-3.88-1.38-3.88-1.38-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.38.96.11-.75.41-1.26.74-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18A10.9 10.9 0 0 1 12 6.1c.96 0 1.93.13 2.83.38 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.7.42.36.79 1.07.79 2.16v3.03c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z" />
@@ -66,7 +57,7 @@
             </span>
             <span>
               <strong>GITHUB</strong>
-              <em>github.com/minlan01</em>
+              <em>{{ profile?.github_url?.replace('https://', '') || 'github.com/minlan01' }}</em>
             </span>
           </a>
 
@@ -79,7 +70,7 @@
             </span>
             <span>
               <strong>LOCATION</strong>
-              <em>中国云南</em>
+              <em>{{ profile?.location || '中国云南' }}</em>
             </span>
           </div>
         </div>
@@ -93,15 +84,7 @@
           <h2>关于项目</h2>
         </div>
         <div class="about__text">
-          <p>
-            这是一个前后端分离的个人博客系统。前台负责阅读、归档、搜索、留言和 AI 对话体验，后台负责文章、分类、标签、媒体库、评论与站点资料管理。
-          </p>
-          <p>
-            前端使用 Vue 3、TypeScript、Vite、Pinia 和 Vue Router 构建；后端使用 FastAPI、SQLAlchemy 与 Pydantic 提供 API、认证和数据管理。项目通过 Docker Compose 编排，前端由 Nginx 提供静态服务，后端和上传目录独立持久化。
-          </p>
-          <p>
-            当前 AI 功能已经切换为 DeepSeek API 接入，不再依赖本机 llama.cpp。数据库默认使用 SQLite，适合个人博客这类轻量场景；后续如果访问量明显增加，也可以迁移到 MySQL 或 PostgreSQL。
-          </p>
+          <p v-for="(p, i) in aboutProjectParagraphs" :key="i">{{ p }}</p>
         </div>
 
         <div class="about__feature-grid">
@@ -121,7 +104,7 @@
           <h2>技术栈</h2>
         </div>
         <div class="about__stack-grid">
-          <div v-for="item in techStack" :key="item" class="about__stack-item">
+          <div v-for="item in techStackItems" :key="item" class="about__stack-item">
             {{ item }}
           </div>
         </div>
@@ -135,38 +118,80 @@
 </template>
 
 <script setup lang="ts">
-const projectHighlights = [
-  {
-    tag: 'Writing',
-    title: '文章与归档',
-    text: '支持 Markdown 写作、分类标签、搜索和归档，适合长期沉淀技术内容。',
-  },
-  {
-    tag: 'Admin',
-    title: '后台管理',
-    text: '提供文章编辑、媒体库、评论、留言和站点资料管理，日常维护可以直接在网页里完成。',
-  },
-  {
-    tag: 'AI',
-    title: 'DeepSeek 对话',
-    text: 'AI 助手通过 DeepSeek API 提供服务，部署时只需要配置对应密钥即可使用。',
-  },
-]
+import { ref, computed } from 'vue'
+import { useSiteStore } from '@/stores/site'
 
-const techStack = [
-  'Vue 3',
-  'TypeScript',
-  'Vite',
-  'Pinia',
-  'Vue Router',
-  'Axios',
-  'FastAPI',
-  'SQLAlchemy',
-  'SQLite',
-  'Docker',
-  'Nginx',
-  'DeepSeek API',
-]
+const avatarWrap = ref<HTMLElement | null>(null)
+const siteStore = useSiteStore()
+const siteAvatar = computed(() => siteStore.profile?.avatar || '/images/about-avatar.png')
+
+function onAvatarMove(e: MouseEvent) {
+  const el = avatarWrap.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const x = (e.clientX - rect.left) / rect.width - 0.5
+  const y = (e.clientY - rect.top) / rect.height - 0.5
+  // Max tilt ~12 degrees
+  el.style.setProperty('--tilt-x', `${(-y * 12).toFixed(2)}deg`)
+  el.style.setProperty('--tilt-y', `${(x * 12).toFixed(2)}deg`)
+  // Glow follows cursor
+  el.style.setProperty('--glow-x', `${((e.clientX - rect.left) / rect.width * 100).toFixed(1)}%`)
+  el.style.setProperty('--glow-y', `${((e.clientY - rect.top) / rect.height * 100).toFixed(1)}%`)
+}
+
+function resetAvatar() {
+  const el = avatarWrap.value
+  if (!el) return
+  el.style.setProperty('--tilt-x', '0deg')
+  el.style.setProperty('--tilt-y', '0deg')
+}
+
+const profile = computed(() => siteStore.profile)
+
+const displayName = computed(() => profile.value?.display_name || profile.value?.site_name || '赤夜冥岚')
+const aboutRole = computed(() => profile.value?.about_role || '开发者 / 技术记录者 / 个人博客维护者')
+const aboutSummary = computed(() => profile.value?.about_summary || '这里是我沉淀学习、整理项目经验和记录想法的地方。比起把知识停留在脑子里，我更喜欢把一次次实践、踩坑和复盘写下来，让它们变成以后还能被自己和别人重新使用的内容。')
+
+const _defaultAboutMe = `你好，我是赤夜冥岚，也可以叫我 minlan01。来自中国云南，平时主要关注编程、Web 开发、自动化工具和各种能把想法做成真实作品的技术。
+
+这个博客不只是一个文章展示页，它更像我的个人工作台：记录学习过程，整理解决问题的方法，也保存一些项目从零到可用之间的真实痕迹。
+
+我希望这里的内容保持直接、可复用、能落地。哪怕只是一个很小的问题，只要它被认真写下来，下次遇到时就会少走一点弯路。`
+
+const aboutMeParagraphs = computed(() => {
+  const text = profile.value?.about_me || _defaultAboutMe
+  return text.split('\n').map(s => s.trim()).filter(Boolean)
+})
+
+const _defaultAboutProject = `这是一个前后端分离的个人博客系统。前台负责阅读、归档、搜索、留言和 AI 对话体验，后台负责文章、分类、标签、媒体库、评论与站点资料管理。
+
+前端使用 Vue 3、TypeScript、Vite、Pinia 和 Vue Router 构建；后端使用 FastAPI、SQLAlchemy 与 Pydantic 提供 API、认证和数据管理。项目通过 Docker Compose 编排，前端由 Nginx 提供静态服务。
+
+图片与视频文件由阿里云 OSS 对象存储承载，数据安全有自动备份保障，后续扩展大文件和云服务器部署会更稳。`
+
+const aboutProjectParagraphs = computed(() => {
+  const text = profile.value?.about_project || _defaultAboutProject
+  return text.split('\n').map(s => s.trim()).filter(Boolean)
+})
+
+const _defaultHighlights = `Writing|文章与归档|支持 Markdown 写作、分类标签、搜索和归档，适合长期沉淀技术内容。
+Admin|后台管理|提供文章编辑、媒体库、评论、留言和站点资料管理，日常维护可以直接在网页里完成。
+AI|DeepSeek 对话|AI 助手通过 DeepSeek API 提供服务，部署时配置对应密钥即可使用。`
+
+const projectHighlights = computed(() => {
+  const text = profile.value?.project_highlights || _defaultHighlights
+  return text.split('\n').filter(Boolean).map(line => {
+    const parts = line.split('|')
+    return { tag: parts[0]?.trim() || '', title: parts[1]?.trim() || '', text: parts[2]?.trim() || '' }
+  })
+})
+
+const _defaultTechStack = 'Vue 3, TypeScript, Vite, Pinia, Vue Router, FastAPI, SQLAlchemy, SQLite, 阿里云OSS, Docker Compose, Caddy, DeepSeek API'
+
+const techStackItems = computed(() => {
+  const text = profile.value?.tech_stack || _defaultTechStack
+  return text.split(/[,\n]/).map(s => s.trim()).filter(Boolean)
+})
 </script>
 
 <style scoped>
@@ -212,6 +237,11 @@ const techStack = [
 .about__avatar-wrap {
   position: relative;
   width: clamp(116px, 20vw, 160px);
+  perspective: 600px;
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --glow-x: 50%;
+  --glow-y: 50%;
 }
 
 .about__avatar {
@@ -222,6 +252,27 @@ const techStack = [
   border: 2px solid var(--border-strong);
   border-radius: var(--radius-xl);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.36);
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform 0.2s ease-out;
+  transform-style: preserve-3d;
+}
+
+.about__avatar-glow {
+  position: absolute;
+  inset: -2px;
+  border-radius: var(--radius-xl);
+  background: radial-gradient(
+    circle at var(--glow-x) var(--glow-y),
+    rgba(129, 140, 248, 0.25),
+    transparent 60%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.about__avatar-wrap:hover .about__avatar-glow {
+  opacity: 1;
 }
 
 .about__status {

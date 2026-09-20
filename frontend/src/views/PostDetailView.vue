@@ -19,7 +19,7 @@
         <!-- Hero header -->
         <header class="detail__hero">
           <div class="detail__cover" v-if="post.cover_image">
-            <img :src="post.cover_image" :alt="post.title + ' 封面图'" class="detail__cover-img" />
+            <img :src="post.cover_image" :alt="post.title + ' 封面图'" class="detail__cover-img" :style="{ 'view-transition-name': `post-cover-${post.id}` }" />
             <div class="detail__cover-mask"></div>
           </div>
 
@@ -41,7 +41,7 @@
               </span>
             </div>
 
-            <h1 class="detail__title">{{ post.title }}</h1>
+            <h1 class="detail__title kinetic-title" :style="{ 'view-transition-name': `post-title-${post.id}` }">{{ post.title }}</h1>
             <p class="detail__summary" v-if="post.summary">{{ post.summary }}</p>
 
             <div class="detail__tags" v-if="post.tags.length">
@@ -50,8 +50,24 @@
           </div>
         </header>
 
+        <!-- 字号调节 -->
+        <div class="detail__font-controls">
+          <button class="detail__font-btn" @click="fontDecrease" :disabled="fontScale <= 0.85" aria-label="缩小字号">A-</button>
+          <button class="detail__font-btn detail__font-btn--reset" @click="fontScale = 1" v-if="fontScale !== 1" aria-label="恢复字号">A</button>
+          <button class="detail__font-btn" @click="fontIncrease" :disabled="fontScale >= 1.35" aria-label="放大字号">A+</button>
+        </div>
+
         <!-- Article body -->
         <section class="detail__content prose" v-html="renderedHtml"></section>
+
+        <!-- Reaction bar (like + bookmark) -->
+        <div class="detail__reactions" v-if="post">
+          <PostReactions
+            :post-id="post.id"
+            :is-logged-in="authStore.isLoggedIn"
+            @need-login="goLogin"
+          />
+        </div>
 
         <!-- Share section -->
         <div class="detail__share">
@@ -60,6 +76,14 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             <span class="detail__share-text">{{ linkCopied ? '已复制!' : '复制链接' }}</span>
           </button>
+          <button class="detail__share-btn detail__share-btn--wechat" @click="showQrcode = !showQrcode" title="微信分享（扫码）">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8.69 2C4.43 2 1 4.94 1 8.56c0 2.1 1.13 3.97 2.88 5.16L3 16.5l2.9-1.45c.7.2 1.4.3 2.1.3h.26a5.9 5.9 0 0 1-.26-1.72c0-3.3 3.1-5.98 6.9-5.98.26 0 .52.01.78.04C15.05 4.24 12.18 2 8.69 2zm-2.6 4.2a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8zm5.2 0a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8z"/><path d="M23 13.63c0-3.06-3.02-5.55-6.74-5.55s-6.75 2.49-6.75 5.55 3.03 5.55 6.75 5.55c.78 0 1.53-.12 2.22-.32L21.5 20l-.66-1.53C22.18 17.4 23 15.6 23 13.63zm-8.98-1.2a.76.76 0 1 1 0 1.52.76.76 0 0 1 0-1.52zm4.48 0a.76.76 0 1 1 0 1.52.76.76 0 0 1 0-1.52z"/></svg>
+            <span class="detail__share-text">微信</span>
+          </button>
+          <a class="detail__share-btn detail__share-btn--qq" :href="`https://connect.qq.com/widget/shareqq/index.html?url=${encodeURIComponent(currentUrl)}&title=${encodeURIComponent(post.title)}&summary=${encodeURIComponent(post.summary || '')}`" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21.4 14.6c-.3-.8-1.3-2.4-1.3-2.4s.3-.1.5-.6c.2-.5-.1-1.5-.1-1.5s.5-2.3.3-4.2c-.2-1.9-1.5-3.6-1.5-3.6s.2-.7.2-1.2c0-.5-.3-1.1-.3-1.1s-.7.4-1.4 1.1c-.7.7-1.5 1.2-1.5 1.2s-1.5-.7-3.8-.7-3.8.7-3.8.7-.8-.5-1.5-1.2C6.3.6 5.6.2 5.6.2s-.3.6-.3 1.1c0 .5.2 1.2.2 1.2s-1.3 1.7-1.5 3.6c-.2 1.9.3 4.2.3 4.2s-.3 1-.1 1.5c.2.5.5.6.5.6s-1 1.6-1.3 2.4c-.3.8-.1 2.2-.1 2.2s.5-1.1 1.1-1.8c.6-.7 1.1-.8 1.1-.8s.5 1.4 1.4 2.6c.9 1.2 2.1 1.7 2.1 1.7s-.1 1.5-1.2 2.8c-1.1 1.3-2.8 1.8-2.8 1.8s1.5.3 3-.2c1.5-.5 2.2-1.5 2.2-1.5s1.5 1 3.2 1c1.7 0 3.2-1 3.2-1s.7 1 2.2 1.5c1.5.5 3 .2 3 .2s-1.7-.5-2.8-1.8c-1.1-1.3-1.2-2.8-1.2-2.8s1.2-.5 2.1-1.7c.9-1.2 1.4-2.6 1.4-2.6s.5.1 1.1.8c.6.7 1.1 1.8 1.1 1.8s.2-1.4-.1-2.2z"/></svg>
+            <span class="detail__share-text">QQ</span>
+          </a>
           <a class="detail__share-btn" :href="`https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(post.title)}`" target="_blank" rel="noopener">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>
             <span class="detail__share-text">Twitter</span>
@@ -69,6 +93,17 @@
             <span class="detail__share-text">微博</span>
           </a>
         </div>
+
+        <!-- 微信二维码弹窗 -->
+        <Transition name="qrcode">
+          <div v-if="showQrcode" class="detail__qrcode" @click.self="showQrcode = false">
+            <div class="detail__qrcode-box">
+              <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`" alt="二维码" class="detail__qrcode-img" />
+              <p class="detail__qrcode-tip">用微信扫码分享</p>
+              <button class="detail__qrcode-close" @click="showQrcode = false">×</button>
+            </div>
+          </div>
+        </Transition>
 
         <!-- Bottom nav -->
         <div class="detail__bottom-nav">
@@ -94,6 +129,27 @@
             </RouterLink>
           </div>
         </section>
+
+        <!-- 上一篇/下一篇导航 -->
+        <nav class="detail__adjacent" v-if="adjacentPosts.prev || adjacentPosts.next">
+          <RouterLink
+            v-if="adjacentPosts.prev"
+            :to="`/posts/${adjacentPosts.prev.slug}`"
+            class="detail__adjacent-link detail__adjacent-link--prev"
+          >
+            <span class="detail__adjacent-label">&larr; 上一篇</span>
+            <span class="detail__adjacent-title">{{ adjacentPosts.prev.title }}</span>
+          </RouterLink>
+          <span v-else></span>
+          <RouterLink
+            v-if="adjacentPosts.next"
+            :to="`/posts/${adjacentPosts.next.slug}`"
+            class="detail__adjacent-link detail__adjacent-link--next"
+          >
+            <span class="detail__adjacent-label">下一篇 &rarr;</span>
+            <span class="detail__adjacent-title">{{ adjacentPosts.next.title }}</span>
+          </RouterLink>
+        </nav>
 
         <!-- Comments -->
         <CommentSection
@@ -127,9 +183,9 @@
 
   <div v-else-if="loading" class="detail__loading">
     <div class="article-container">
-      <div class="detail__skeleton detail__skeleton--title"></div>
-      <div class="detail__skeleton detail__skeleton--text"></div>
-      <div class="detail__skeleton detail__skeleton--text short"></div>
+      <div class="detail__skeleton detail__skeleton--title skeleton-shimmer"></div>
+      <div class="detail__skeleton detail__skeleton--text skeleton-shimmer"></div>
+      <div class="detail__skeleton detail__skeleton--text short skeleton-shimmer"></div>
     </div>
   </div>
 
@@ -150,32 +206,73 @@
       </div>
     </Transition>
   </Teleport>
+
+  <!-- 移动端悬浮 TOC -->
+  <Teleport to="body">
+    <Transition name="toc-fab">
+      <button
+        v-if="post && headings.length"
+        class="detail__toc-fab"
+        @click="mobileTocOpen = !mobileTocOpen"
+        aria-label="文章目录"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+    </Transition>
+    <Transition name="toc-panel">
+      <div v-if="mobileTocOpen" class="detail__toc-overlay" @click.self="mobileTocOpen = false">
+        <div class="detail__toc-panel">
+          <div class="detail__toc-panel-header">
+            <span>目录</span>
+            <button @click="mobileTocOpen = false" aria-label="关闭">&times;</button>
+          </div>
+          <nav class="detail__toc-panel-list">
+            <a
+              v-for="h in headings"
+              :key="h.id"
+              :href="'#' + h.id"
+              :class="{ 'active': activeHeading === h.id, 'is-h3': h.level === 3 }"
+              @click.prevent="scrollTo(h.id); mobileTocOpen = false"
+            >{{ h.text }}</a>
+          </nav>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { getPostBySlug, getRelatedPosts } from '@/api/blog'
+import { useRoute, useRouter } from 'vue-router'
+import { getPostBySlug, getRelatedPosts, getAdjacentPosts } from '@/api/blog'
+import type { AdjacentPost } from '@/api/blog'
 import { isAxiosError } from '@/api/http'
 import { renderMarkdown } from '@/utils/markdown'
 import { useAuthStore } from '@/stores/auth'
 import { useSeo } from '@/composables/useSeo'
+import { useFontSize } from '@/composables/useFontSize'
 import CommentSection from '@/components/blog/CommentSection.vue'
+import PostReactions from '@/components/blog/PostReactions.vue'
 import type { PostDetail, PostSummary } from '@/types/blog'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 useSeo()
 
 const post = ref<PostDetail | null>(null)
 const relatedPosts = ref<PostSummary[]>([])
+const adjacentPosts = ref<{ prev: AdjacentPost | null; next: AdjacentPost | null }>({ prev: null, next: null })
 const loading = ref(true)
 const errorMessage = ref('')
 const activeHeading = ref('')
 const lightboxSrc = ref<string | null>(null)
 const readProgress = ref(0)
+const { scale: fontScale, increase: fontIncrease, decrease: fontDecrease } = useFontSize()
+const mobileTocOpen = ref(false)
 const linkCopied = ref(false)
+const showQrcode = ref(false)
 const currentUrl = ref('')
 
 const renderedHtml = computed(() => renderMarkdown(post.value?.content_markdown || ''))
@@ -233,6 +330,10 @@ function copyPostLink() {
   navigator.clipboard.writeText(window.location.href)
   linkCopied.value = true
   setTimeout(() => { linkCopied.value = false }, 2000)
+}
+
+function goLogin() {
+  router.push({ path: '/login', query: { redirect: route.fullPath } })
 }
 
 let _scrollTicking = false
@@ -317,7 +418,7 @@ async function loadPost(slug: string) {
   try {
     post.value = await getPostBySlug(slug)
     if (post.value) {
-      document.title = `${post.value.title} — minlan01`
+      document.title = `${post.value.title} — 赤夜冥岚的编程小屋`
       route.meta.postTitle = post.value.title
       route.meta.postDescription = post.value.summary
       route.meta.postImage = post.value.cover_image || undefined
@@ -336,6 +437,12 @@ async function loadPost(slug: string) {
         relatedPosts.value = await getRelatedPosts(slug)
       } catch {
         // Non-critical, ignore
+      }
+      // 加载上下篇
+      try {
+        adjacentPosts.value = await getAdjacentPosts(slug)
+      } catch {
+        // Non-critical
       }
     }
   } catch (error: any) {
@@ -365,11 +472,11 @@ function injectJsonLd(p: PostDetail) {
     datePublished: p.published_at,
     author: {
       '@type': 'Person',
-      name: 'minlan01',
+      name: '赤夜冥岚',
     },
     publisher: {
       '@type': 'Person',
-      name: 'minlan01',
+      name: '赤夜冥岚',
     },
     mainEntityOfPage: window.location.href,
     ...(p.cover_image ? { image: p.cover_image } : {}),
@@ -722,7 +829,9 @@ watch(
 }
 
 .detail__content :deep(table) {
-  width: 100%;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-collapse: collapse;
   margin: var(--space-lg) 0;
   font-size: 0.88rem;
@@ -881,7 +990,10 @@ watch(
   }
 
   .detail__sidebar {
-    display: none;
+    display: block;
+    border-top: 1px solid var(--glass-border);
+    padding-top: var(--space-xl);
+    margin-top: var(--space-xl);
   }
 
   .detail__main {
@@ -1029,6 +1141,13 @@ watch(
 }
 
 /* ========================================
+   Reactions Bar
+   ======================================== */
+.detail__reactions {
+  padding: var(--space-md) 0 var(--space-sm);
+}
+
+/* ========================================
    Share Section
    ======================================== */
 .detail__share {
@@ -1067,6 +1186,74 @@ watch(
 
 .detail__share-text {
   font-size: 0.78rem;
+}
+
+.detail__share-btn--wechat:hover {
+  color: #07c160;
+  border-color: #07c160;
+}
+
+.detail__share-btn--qq:hover {
+  color: #12b7f5;
+  border-color: #12b7f5;
+}
+
+/* 二维码弹窗 */
+.detail__qrcode {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.detail__qrcode-box {
+  position: relative;
+  background: var(--glass-card-bg, #fff);
+  border-radius: var(--radius-lg, 16px);
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.detail__qrcode-img {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+}
+
+.detail__qrcode-tip {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--color-text, #333);
+}
+
+.detail__qrcode-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--color-text-muted, #999);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.detail__qrcode-close:hover {
+  color: #ff4444;
+}
+
+.qrcode-enter-active,
+.qrcode-leave-active {
+  transition: opacity 0.2s ease;
+}
+.qrcode-enter-from,
+.qrcode-leave-to {
+  opacity: 0;
 }
 
 /* ========================================
@@ -1150,5 +1337,224 @@ watch(
   text-transform: uppercase;
   letter-spacing: 0.05em;
   pointer-events: none;
+}
+
+/* 上一篇/下一篇导航 */
+.detail__adjacent {
+  display: flex;
+  gap: 1rem;
+  margin: 2.5rem 0 1.5rem;
+}
+
+.detail__adjacent-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.25rem;
+  background: var(--glass-card-bg);
+  backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  -webkit-backdrop-filter: var(--glass-card-blur) saturate(var(--glass-card-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.detail__adjacent-link:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+.detail__adjacent-link--next {
+  text-align: right;
+}
+
+.detail__adjacent-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+}
+
+.detail__adjacent-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .detail__adjacent {
+    flex-direction: column;
+  }
+  .detail__adjacent-link--next {
+    text-align: left;
+  }
+}
+
+/* 字号调节 */
+.detail__font-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.detail__font-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail__font-btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.detail__font-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.detail__font-btn--reset {
+  width: auto;
+  padding: 0 0.6rem;
+}
+
+/* 移动端悬浮 TOC */
+.detail__toc-fab {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .detail__toc-fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 16px;
+    bottom: 80px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--glass-card-bg);
+    backdrop-filter: var(--glass-card-blur);
+    border: 1px solid var(--glass-border);
+    color: var(--color-text);
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s, border-color 0.15s;
+  }
+
+  .detail__toc-fab:hover {
+    border-color: var(--color-accent);
+    transform: scale(1.05);
+  }
+
+  /* 隐藏文末堆叠的旧 TOC */
+  .detail__sidebar {
+    display: none !important;
+  }
+}
+
+.detail__toc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.detail__toc-panel {
+  width: min(300px, 80vw);
+  height: 100%;
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-toolbar-blur);
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail__toc-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-text-heading);
+}
+
+.detail__toc-panel-header button {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.detail__toc-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.detail__toc-panel-list a {
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.detail__toc-panel-list a.is-h3 {
+  padding-left: 1.5rem;
+  font-size: 0.8rem;
+}
+
+.detail__toc-panel-list a.active,
+.detail__toc-panel-list a:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-glow);
+}
+
+.toc-fab-enter-active,
+.toc-fab-leave-active {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.toc-fab-enter-from,
+.toc-fab-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.toc-panel-enter-active,
+.toc-panel-leave-active {
+  transition: opacity 0.25s;
+}
+
+.toc-panel-enter-from,
+.toc-panel-leave-to {
+  opacity: 0;
 }
 </style>

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { http } from '@/api/http'
 import { login as apiLogin, register as apiRegister, getProfile } from '@/api/auth'
 import type { User } from '@/types/blog'
 
@@ -14,14 +15,22 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(usernameInput: string, password: string) {
     const data = await apiLogin(usernameInput, password)
     token.value = data.access_token
-    localStorage.setItem('token', data.access_token)
-    localStorage.setItem('refresh_token', data.refresh_token)
+    sessionStorage.setItem('token', data.access_token)
+    // refresh_token 现在由后端通过 httpOnly cookie 设置，前端不再持有
     await fetchProfile()
   }
 
-  async function register(usernameInput: string, password: string, email?: string) {
-    await apiRegister(usernameInput, password, email)
-    await login(usernameInput, password)
+  async function register(payload: {
+    username: string
+    password: string
+    confirm_password: string
+    email?: string
+    captcha_answer: number
+    captcha_token: string
+    captcha_ts: number
+  }) {
+    await apiRegister(payload)
+    await login(payload.username, payload.password)
   }
 
   async function fetchProfile() {
@@ -29,24 +38,38 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       user.value = await getProfile()
     } catch {
-      logout()
+      clearLocal()
     }
   }
 
-  function logout() {
+  function setUser(updated: User) {
+    user.value = updated
+  }
+
+  // 仅清理前端状态（不调用后端）
+  function clearLocal() {
     token.value = null
     user.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('refresh_token')
+    sessionStorage.removeItem('token')
     localStorage.removeItem('user')
   }
 
-  // Auto-restore session from localStorage on init
-  const stored = localStorage.getItem('token')
+  // 完整登出：调用后端清除 cookie + 服务端 token，再清理前端状态
+  async function logout() {
+    try {
+      await http.post('/auth/logout', {}, { withCredentials: true })
+    } catch {
+      // 后端调用失败也继续清理前端状态
+    }
+    clearLocal()
+  }
+
+  // Auto-restore session from sessionStorage on init
+  const stored = sessionStorage.getItem('token')
   if (stored) {
     token.value = stored
     fetchProfile()
   }
 
-  return { token, user, isLoggedIn, isAdmin, username, login, register, logout, fetchProfile }
+  return { token, user, isLoggedIn, isAdmin, username, login, register, logout, fetchProfile, setUser }
 })

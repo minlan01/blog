@@ -31,12 +31,22 @@
         </div>
       </div>
 
-      <!-- Chart placeholder -->
+      <!-- Chart -->
       <div class="stats-page__chart-section">
-        <h2 class="stats-page__section-title">访问趋势</h2>
-        <div class="stats-page__chart-placeholder">
+        <h2 class="stats-page__section-title">访问趋势（近 30 天）</h2>
+        <div v-if="trackStats?.trend?.length" class="stats-page__trend">
+          <div class="stats-page__trend-bar" v-for="day in trackStats.trend" :key="day.date">
+            <div
+              class="stats-page__trend-fill"
+              :style="{ height: trendPct(day.count) + '%' }"
+              :title="`${day.date}: ${day.count} 次`"
+            ></div>
+            <span class="stats-page__trend-label">{{ day.date.slice(5) }}</span>
+          </div>
+        </div>
+        <div v-else class="stats-page__chart-placeholder">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          <span>访问趋势图表区域（可接入 Umami 等统计服务）</span>
+          <span>暂无访问数据，开始使用后这里会显示趋势图</span>
         </div>
       </div>
 
@@ -118,6 +128,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { getStats, type SiteStats } from '@/api/blog'
+import { http } from '@/api/http'
 
 const stats = ref<SiteStats | null>(null)
 const loading = ref(true)
@@ -133,6 +144,12 @@ function formatWords(n: number): string {
   if (n >= 10000) return (n / 10000).toFixed(1) + ' 万字'
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k 字'
   return n + ' 字'
+}
+
+function trendPct(count: number): number {
+  if (!trackStats.value?.trend?.length) return 0
+  const max = Math.max(...trackStats.value.trend.map((t: any) => t.count), 1)
+  return Math.max(4, Math.round(count / max * 100))
 }
 
 const overviewStats = computed(() => {
@@ -158,36 +175,44 @@ const contentStats = computed(() => {
   ]
 })
 
-// Placeholder data for analytics not yet connected
-const topPages = [
-  { path: '/', label: '首页' },
-  { path: '/posts', label: '文章列表' },
-  { path: '/about', label: '关于' },
-  { path: '/archive', label: '归档' },
-  { path: '/link', label: '友链' },
-]
+// 访问统计详情（真实数据）
+const trackStats = ref<any>(null)
 
-const devices = [
-  { name: 'Desktop', pct: 58 },
-  { name: 'Mobile', pct: 34 },
-  { name: 'Tablet', pct: 8 },
-]
+async function loadTrackStats() {
+  try {
+    const { data } = await http.get('/track/stats?days=30')
+    trackStats.value = data
+  } catch {
+    // 非致命
+  }
+}
 
-const browsers = [
-  { name: 'Chrome', pct: 62 },
-  { name: 'Safari', pct: 18 },
-  { name: 'Firefox', pct: 11 },
-  { name: 'Edge', pct: 7 },
-  { name: 'Other', pct: 2 },
-]
+const _pageLabels: Record<string, string> = {
+  '/': '首页', '/posts': '文章列表', '/about': '关于', '/archive': '归档',
+  '/link': '友链', '/tags': '标签', '/message-board': '留言板',
+}
 
-const referrers = [
-  { source: '直接访问', visitors: 1450 },
-  { source: 'Google', visitors: 820 },
-  { source: 'GitHub', visitors: 340 },
-  { source: 'Bing', visitors: 210 },
-  { source: 'Bilibili', visitors: 156 },
-]
+const topPages = computed(() => {
+  if (!trackStats.value?.top_pages?.length) return [{ path: '/', label: '暂无数据', count: 0 }]
+  return trackStats.value.top_pages.map((p: any) => ({
+    path: p.path, label: _pageLabels[p.path] || p.path, count: p.count,
+  }))
+})
+
+const devices = computed(() => {
+  if (!trackStats.value?.devices?.length) return [{ name: '暂无数据', pct: 100 }]
+  return trackStats.value.devices.map((d: any) => ({ name: d.name, pct: d.pct }))
+})
+
+const browsers = computed(() => {
+  if (!trackStats.value?.browsers?.length) return [{ name: '暂无数据', pct: 100 }]
+  return trackStats.value.browsers.map((b: any) => ({ name: b.name, pct: b.pct }))
+})
+
+const referrers = computed(() => {
+  if (!trackStats.value?.referrers?.length) return [{ source: '暂无数据', visitors: 0 }]
+  return trackStats.value.referrers.map((r: any) => ({ source: r.source, visitors: r.count }))
+})
 
 onMounted(async () => {
   try {
@@ -197,6 +222,7 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  loadTrackStats()
 })
 </script>
 
@@ -504,6 +530,57 @@ onMounted(async () => {
 
   .stats-page__chart-placeholder {
     height: 140px;
+  }
+}
+
+/* 访问趋势图 */
+.stats-page__trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 120px;
+  padding: 0.5rem;
+  background: var(--glass-card-bg);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+}
+
+.stats-page__trend-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 18px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.stats-page__trend-fill {
+  width: 100%;
+  background: var(--color-accent);
+  opacity: 0.7;
+  border-radius: 2px 2px 0 0;
+  min-height: 4px;
+  transition: opacity 0.15s;
+}
+
+.stats-page__trend-bar:hover .stats-page__trend-fill {
+  opacity: 1;
+}
+
+.stats-page__trend-label {
+  font-size: 0.55rem;
+  color: var(--color-text-muted);
+  margin-top: 0.25rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .stats-page__trend-label {
+    display: none;
+  }
+  .stats-page__trend-bar {
+    min-width: 8px;
   }
 }
 </style>

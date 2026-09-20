@@ -8,7 +8,7 @@
     <!-- Comment list (nested) -->
     <div class="comments__list" v-if="comments.length">
       <CommentItem
-        v-for="comment in comments"
+        v-for="comment in visibleComments"
         :key="comment.id"
         :comment="comment"
         :user-id="userId"
@@ -21,6 +21,13 @@
         @cancel-reply="cancelReply"
       />
     </div>
+    <button
+      v-if="comments.length > visibleCount"
+      class="comments__load-more"
+      @click="visibleCount += 5"
+    >
+      查看更多评论 ({{ comments.length - visibleCount }})
+    </button>
     <p v-else-if="loadError" class="comments__error">{{ loadError }}</p>
     <p v-else class="comments__empty">暂无评论，来发表第一条吧。</p>
 
@@ -36,9 +43,12 @@
         rows="3"
         required
       ></textarea>
-      <button type="submit" class="comments__submit" :disabled="submitting">
-        {{ submitting ? '发表中...' : '发表评论' }}
-      </button>
+      <div class="comments__form-bottom">
+        <span class="comments__md-hint">支持 **粗体**、*斜体*、`代码`、[链接](URL)</span>
+        <button type="submit" class="comments__submit" :disabled="submitting">
+          {{ submitting ? '发表中...' : '发表评论' }}
+        </button>
+      </div>
     </form>
     <div v-else class="comments__login-prompt">
       <p class="comments__login-text">需要注册/登录后才能发表评论</p>
@@ -85,6 +95,8 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore()
 const comments = ref<CommentRead[]>([])
+const visibleCount = ref(5)
+const visibleComments = computed(() => comments.value.slice(0, visibleCount.value))
 const newComment = ref('')
 const submitting = ref(false)
 const replyingTo = ref<number | null>(null)
@@ -104,6 +116,7 @@ const totalCount = computed(() => {
 async function loadComments() {
   try {
     comments.value = await getComments(props.postId)
+    visibleCount.value = 5
   } catch {
     loadError.value = '评论加载失败，请刷新页面重试'
   }
@@ -433,5 +446,63 @@ onMounted(loadComments)
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
+}
+
+.comments__load-more {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  background: var(--glass-surface-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.825rem;
+  transition: all 0.15s ease;
+}
+
+.comments__load-more:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.comments__form-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.comments__md-hint {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+/* 评论内 Markdown 渲染样式 */
+.comment-item__content :deep(strong) {
+  font-weight: 700;
+  color: var(--color-text-heading);
+}
+
+.comment-item__content :deep(em) {
+  font-style: italic;
+}
+
+.comment-item__content :deep(code) {
+  padding: 0.1rem 0.35rem;
+  background: var(--glass-surface-bg);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.comment-item__content :deep(a) {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.comment-item__content :deep(a:hover) {
+  text-decoration: underline;
 }
 </style>

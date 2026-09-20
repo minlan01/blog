@@ -23,30 +23,30 @@
       <!-- Message form -->
       <div class="message-board__form-card">
         <div class="message-board__form-inner">
-          <div class="message-board__form-row">
+          <!-- 未登录用户需要填写昵称和邮箱 -->
+          <div v-if="!isLoggedIn" class="message-board__form-row">
             <div class="message-board__field">
               <label class="message-board__label-text">昵称</label>
               <input v-model="form.name" class="message-board__input" placeholder="你的名字" />
             </div>
             <div class="message-board__field">
-              <label class="message-board__label-text">邮箱 <span class="message-board__optional">(选填)</span></label>
+              <label class="message-board__label-text">邮箱</label>
               <input v-model="form.email" type="email" class="message-board__input" placeholder="your@email.com" />
             </div>
+          </div>
+          <!-- 已登录用户显示身份信息 -->
+          <div v-else class="message-board__user-info">
+            <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" class="message-board__user-avatar" alt="avatar" />
+            <span v-else class="message-board__user-avatar message-board__user-avatar--fallback">{{ authStore.username.charAt(0).toUpperCase() }}</span>
+            <span class="message-board__user-name">{{ authStore.username }}</span>
+            <span class="message-board__user-email">{{ authStore.user?.email }}</span>
           </div>
           <div class="message-board__field">
             <label class="message-board__label-text">留言内容</label>
             <textarea v-model="form.content" class="message-board__textarea" rows="4" placeholder="写下你想说的..."></textarea>
           </div>
-          <div class="message-board__captcha-row">
-            <div class="message-board__field message-board__captcha-field">
-              <label class="message-board__label-text">{{ captchaQuestion }}</label>
-              <input v-model="form.captchaAnswer" class="message-board__input" type="number" placeholder="?" />
-            </div>
-            <button type="button" class="message-board__captcha-refresh" @click="loadCaptcha" title="换一个">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            </button>
-          </div>
-          <p v-if="captchaError" class="message-board__captcha-error">{{ captchaError }}</p>
+          <p v-if="formError" class="message-board__captcha-error">{{ formError }}</p>
+          <p v-if="submitSuccess" class="message-board__success-tip">留言提交成功！等待管理员审核后将会显示。</p>
           <button class="message-board__submit" @click="submitMessage" :disabled="!canSubmit">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             {{ submitLoading ? '发送中...' : '发送留言' }}
@@ -59,12 +59,9 @@
         <h2 class="message-board__list-title">
           留言 ({{ totalCount }})
         </h2>
-
-        <!-- Loading state -->
         <div v-if="loading" class="message-board__loading">
           <div class="message-board__skeleton" v-for="n in 3" :key="n"></div>
         </div>
-
         <p v-else-if="loadError" class="message-board__load-error">{{ loadError }}</p>
         <div v-else-if="!messages.length" class="message-board__empty">
           <p>还没有留言，来做第一个留言的人吧！</p>
@@ -74,10 +71,10 @@
             <MessageItem
               :msg="msg"
               :is-admin="isAdmin"
+              :is-logged-in="isLoggedIn"
+              :current-username="authStore.username"
+              :current-email="authStore.user?.email || ''"
               :replying-to="replyingTo"
-              :captcha-question="captchaQuestion"
-              :captcha-token="captchaToken"
-              :captcha-ts="captchaTs"
               @reply="startReply"
               @delete="handleDelete"
               @submit-reply="submitReply"
@@ -85,8 +82,6 @@
             />
           </div>
         </TransitionGroup>
-
-        <!-- Delete error -->
         <div v-if="deleteError" class="message-board__delete-error">{{ deleteError }}</div>
       </div>
     </div>
@@ -95,36 +90,39 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { createMessage, deleteMessage, getMessages, getCaptcha, type MessageRead } from '@/api/messages'
+import { createMessage, deleteMessage, getMessages, type MessageRead } from '@/api/messages'
 import { useAuthStore } from '@/stores/auth'
 import MessageItem from './MessageBoardItem.vue'
 
 const envelopeOpen = ref(false)
-
 const authStore = useAuthStore()
-
 const isAdmin = computed(() => authStore.isAdmin)
+const isLoggedIn = computed(() => authStore.isLoggedIn)
 
 const form = reactive({
   name: '',
   email: '',
   content: '',
-  captchaAnswer: '',
 })
 
-const captchaQuestion = ref('')
-const captchaToken = ref('')
-const captchaTs = ref(0)
-const captchaError = ref('')
-
+const formError = ref('')
 const messages = ref<MessageRead[]>([])
 const loading = ref(false)
 const loadError = ref('')
 const deleteError = ref('')
 const submitLoading = ref(false)
+const submitSuccess = ref(false)
 const replyingTo = ref<number | null>(null)
 
-const canSubmit = computed(() => form.name.trim() && form.content.trim() && form.captchaAnswer.trim() && !submitLoading.value)
+// 登录用户不需要填昵称邮箱；未登录用户需要
+const canSubmit = computed(() => {
+  if (submitLoading.value) return false
+  if (!form.content.trim()) return false
+  if (!isLoggedIn.value) {
+    return form.name.trim() && form.email.trim()
+  }
+  return true
+})
 
 const totalCount = computed(() => {
   function countAll(list: MessageRead[]): number {
@@ -132,29 +130,6 @@ const totalCount = computed(() => {
   }
   return countAll(messages.value)
 })
-
-function formatCreatedAt(dateStr: string): string {
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}`
-}
-
-async function loadCaptcha() {
-  try {
-    const data = await getCaptcha()
-    captchaQuestion.value = data.question
-    captchaToken.value = data.token
-    captchaTs.value = data.ts
-    form.captchaAnswer = ''
-    captchaError.value = ''
-  } catch {
-    captchaError.value = '验证码加载失败，请刷新页面重试'
-  }
-}
 
 async function loadMessages() {
   loading.value = true
@@ -172,25 +147,32 @@ async function submitMessage() {
   if (!canSubmit.value) return
 
   submitLoading.value = true
-  captchaError.value = ''
-  try {
-    const newMessage = await createMessage({
-      name: form.name.trim(),
-      email: form.email.trim() || undefined,
-      content: form.content.trim(),
-      captcha_answer: parseInt(form.captchaAnswer, 10),
-      captcha_token: captchaToken.value,
-      captcha_ts: captchaTs.value,
-    })
-    messages.value.unshift(newMessage)
+  formError.value = ''
+  submitSuccess.value = false
 
-    form.name = ''
-    form.email = ''
+  // 登录用户用数据库中的信息，未登录用户用表单填写的信息
+  const name = isLoggedIn.value ? authStore.username : form.name.trim()
+  const email = isLoggedIn.value ? (authStore.user?.email || '') : form.email.trim()
+
+  if (!email) {
+    formError.value = '邮箱不能为空'
+    submitLoading.value = false
+    return
+  }
+
+  try {
+    await createMessage({ name, email, content: form.content.trim() })
     form.content = ''
-    await loadCaptcha()
+    if (!isLoggedIn.value) {
+      form.name = ''
+      form.email = ''
+    }
+    submitSuccess.value = true
+    setTimeout(() => { submitSuccess.value = false }, 5000)
+    await loadMessages()
   } catch (error: any) {
-    captchaError.value = error?.response?.data?.detail || '发送失败'
-    await loadCaptcha()
+    const detail = error?.response?.data?.detail
+    formError.value = typeof detail === 'string' ? detail : '发送失败'
   } finally {
     submitLoading.value = false
   }
@@ -204,37 +186,21 @@ function cancelReply() {
   replyingTo.value = null
 }
 
-async function submitReply(parentId: number, payload: { name: string; email?: string; content: string }) {
-  captchaError.value = ''
+async function submitReply(parentId: number, payload: { name: string; email: string; content: string }) {
+  formError.value = ''
   try {
-    const reply = await createMessage({
-      name: payload.name.trim(),
-      email: payload.email?.trim() || undefined,
-      content: payload.content.trim(),
+    await createMessage({
+      name: payload.name,
+      email: payload.email,
+      content: payload.content,
       parent_id: parentId,
-      captcha_answer: parseInt(form.captchaAnswer, 10),
-      captcha_token: captchaToken.value,
-      captcha_ts: captchaTs.value,
     })
-    insertReply(messages.value, parentId, reply)
     replyingTo.value = null
-    await loadCaptcha()
+    await loadMessages()
   } catch (error: any) {
-    captchaError.value = error?.response?.data?.detail || '回复失败，请重试验证码'
-    await loadCaptcha()
+    const detail = error?.response?.data?.detail
+    formError.value = typeof detail === 'string' ? detail : '回复失败'
   }
-}
-
-function insertReply(list: MessageRead[], parentId: number, reply: MessageRead): boolean {
-  for (const m of list) {
-    if (m.id === parentId) {
-      if (!m.replies) m.replies = []
-      m.replies.push(reply)
-      return true
-    }
-    if (m.replies && insertReply(m.replies, parentId, reply)) return true
-  }
-  return false
 }
 
 async function handleDelete(msgId: number) {
@@ -261,7 +227,6 @@ function removeMessage(list: MessageRead[], id: number): boolean {
 
 onMounted(() => {
   loadMessages()
-  loadCaptcha()
 })
 </script>
 
@@ -367,6 +332,43 @@ onMounted(() => {
   z-index: 1;
 }
 
+.message-board__user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0 var(--space-md);
+  margin-bottom: var(--space-md);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.message-board__user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.message-board__user-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-tint-15);
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.message-board__user-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--color-text);
+}
+
+.message-board__user-email {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
 .message-board__form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -385,11 +387,6 @@ onMounted(() => {
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--color-text-soft);
-}
-
-.message-board__optional {
-  color: var(--color-text-muted);
-  font-weight: 400;
 }
 
 .message-board__input,
@@ -440,35 +437,20 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.message-board__captcha-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.message-board__captcha-field {
-  flex: 1;
-}
-
-.message-board__captcha-refresh {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: color 0.2s;
-  margin-bottom: 0;
-}
-
-.message-board__captcha-refresh:hover {
-  color: var(--primary);
-}
-
 .message-board__captcha-error {
   color: #ef4444;
   font-size: 0.85rem;
   margin: 4px 0 0;
+}
+
+.message-board__success-tip {
+  color: #10b981;
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+  padding: 8px 14px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-sm);
 }
 
 .message-board__load-error {
@@ -511,7 +493,6 @@ onMounted(() => {
   background: var(--glass-bg-03);
 }
 
-/* Messages list */
 .message-board__list-title {
   font-size: 0.95rem;
   font-weight: 600;
@@ -525,7 +506,6 @@ onMounted(() => {
   gap: var(--space-md);
 }
 
-/* List transitions */
 .msg-list-enter-active {
   transition: all 0.4s var(--ease-spring);
 }

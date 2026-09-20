@@ -116,10 +116,54 @@ watchEffect(() => {
 
 export function useTheme() {
   /** Manual toggle: cycles dark → light → auto */
-  function toggle() {
-    if (mode.value === 'dark') mode.value = 'light'
-    else if (mode.value === 'light') mode.value = 'auto'
-    else mode.value = 'dark'
+  function toggle(event?: MouseEvent) {
+    // View Transitions API: circular reveal from click point
+    const doToggle = () => {
+      if (mode.value === 'dark') mode.value = 'light'
+      else if (mode.value === 'light') mode.value = 'auto'
+      else mode.value = 'dark'
+    }
+
+    // Check support + not auto mode (auto doesn't need fancy animation)
+    if (
+      mode.value === 'auto' ||
+      typeof document === 'undefined' ||
+      !document.startViewTransition
+    ) {
+      doToggle()
+      return
+    }
+
+    // Get click coordinates (fallback to center)
+    const x = event?.clientX ?? window.innerWidth / 2
+    const y = event?.clientY ?? window.innerHeight / 2
+
+    // Calculate the max radius needed to cover the screen
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    )
+
+    const transition = document.startViewTransition(() => doToggle())
+
+    transition.ready.then(() => {
+      const root = document.documentElement
+      const isDarkToLight = mode.value === 'light'
+      root.animate(
+        {
+          clipPath: isDarkToLight
+            ? [`circle(0 at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`]
+            : [`circle(${endRadius}px at ${x}px ${y}px)`, `circle(0 at ${x}px ${y}px)`],
+        },
+        {
+          duration: 200,
+          easing: 'ease-out',
+          pseudoElement: '::view-transition-new(root)',
+        }
+      )
+    }).catch(() => {
+      // Transition interrupted — no-op, theme already applied
+    })
   }
 
   /** Cycle label for the toggle button */

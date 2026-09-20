@@ -34,11 +34,18 @@
         <span class="footer__sep">/</span>
         <RouterLink to="/about" class="footer__link">关于</RouterLink>
         <span class="footer__sep">/</span>
+        <RouterLink to="/tags" class="footer__link">标签</RouterLink>
+        <span class="footer__sep">/</span>
         <a v-if="profile?.github_url" :href="profile.github_url" target="_blank" rel="noopener" class="footer__link">GitHub</a>
         <template v-if="profile?.github_url">
           <span class="footer__sep">/</span>
         </template>
         <a href="mailto:746408662@qq.com" class="footer__link">Email</a>
+        <span class="footer__sep">/</span>
+        <a href="/api/v1/rss" target="_blank" rel="noopener" class="footer__link footer__link--rss">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: -1px; margin-right: 2px;"><circle cx="6.18" cy="17.82" r="2.18"/><path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56zm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/></svg>
+          RSS
+        </a>
       </div>
 
       <!-- Stats bar -->
@@ -59,10 +66,14 @@
         </span>
       </div>
 
-      <!-- ICP Filing (reserved — set window.__ICP_FILING__ to display) -->
-      <div v-if="icpFiling" class="footer__icp">
-        <a v-if="icpLink" :href="icpLink" target="_blank" rel="noopener" class="footer__icp-link">{{ icpFiling }}</a>
-        <span v-else>{{ icpFiling }}</span>
+      <!-- 备案信息（公安备案 + ICP 备案） -->
+      <div class="footer__icp">
+        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=53010202002420" target="_blank" rel="noreferrer" class="footer__icp-link footer__police-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="footer__police-badge"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+          <span>滇公网安备53010202002420号</span>
+        </a>
+        <span class="footer__icp-gap"></span>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" class="footer__icp-link">滇ICP备2026011272号-2</a>
       </div>
     </div>
   </footer>
@@ -74,20 +85,8 @@ import { useSiteStore } from '@/stores/site'
 
 const siteStore = useSiteStore()
 const profile = computed(() => siteStore.profile)
-const brandName = computed(() => profile.value?.site_name ?? '赤夜冥岚')
+const brandName = computed(() => profile.value?.site_name ?? '赤夜冥岚的编程小屋')
 const year = new Date().getFullYear()
-
-// ICP Filing — configurable via site config or global variable
-// Set in backend site_config: { icp_filing: "京ICP备xxxxxxx号", icp_link: "https://beian.miit.gov.cn/" }
-// Or set at runtime: (window as any).__ICP_FILING__ = "京ICP备xxxxxxx号"
-const icpFiling = computed(() => {
-  const w = window as any
-  return profile.value?.icp_filing || w.__ICP_FILING__ || ''
-})
-const icpLink = computed(() => {
-  const w = window as any
-  return profile.value?.icp_link || w.__ICP_LINK__ || ''
-})
 </script>
 
 <style scoped>
@@ -223,14 +222,22 @@ const icpLink = computed(() => {
   font-family: var(--font-mono);
 }
 
-/* ICP Filing */
+/* 备案信息 */
 .footer__icp {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
   margin-top: var(--space-xs);
   font-size: 0.72rem;
   color: var(--color-text-muted);
 }
 
 .footer__icp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--color-text-muted);
   text-decoration: none;
   transition: color var(--duration-fast) ease;
@@ -238,6 +245,23 @@ const icpLink = computed(() => {
 
 .footer__icp-link:hover {
   color: var(--color-accent);
+}
+
+.footer__police-badge {
+  opacity: 0.6;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.footer__icp-gap {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .footer__icp {
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 
 @media (max-width: 640px) {

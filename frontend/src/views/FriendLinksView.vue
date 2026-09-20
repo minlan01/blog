@@ -71,7 +71,7 @@
             <div class="links-page__info-card">
               <div class="links-page__info-row">
                 <span class="links-page__info-label">名称</span>
-                <span class="links-page__info-value">{{ profile?.site_name || '赤夜冥岚' }}</span>
+                <span class="links-page__info-value">{{ profile?.site_name || '赤夜冥岚的编程小屋' }}</span>
               </div>
               <div class="links-page__info-row">
                 <span class="links-page__info-label">描述</span>

@@ -65,9 +65,9 @@ const iconMap: Record<string, string> = {
 }
 
 .toast--success {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: #4ade80;
+  background: var(--success-bg-12);
+  border-color: var(--success-bg-12);
+  color: var(--success-main);
 }
 .toast--error {
   background: rgba(239, 68, 68, 0.2);

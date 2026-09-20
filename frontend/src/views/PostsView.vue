@@ -52,7 +52,7 @@
         <!-- 加载态 -->
         <div v-else-if="!loaded" class="posts-page__loading">
           <div class="posts-page__grid">
-            <div v-for="n in 6" :key="n" class="posts-page__skeleton"></div>
+            <div v-for="n in 6" :key="n" class="posts-page__skeleton skeleton-shimmer"></div>
           </div>
         </div>
 

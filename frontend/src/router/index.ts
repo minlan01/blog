@@ -12,7 +12,7 @@ const router = createRouter({
           path: '',
           name: 'home',
           component: () => import('@/views/HomeView.vue'),
-          meta: { title: '首页', description: 'minlan01 的技术博客 — 分享编程技术、项目经验与开发心得' },
+          meta: { title: '首页', description: '赤夜冥岚的编程小屋 — 分享编程技术、项目经验与开发心得' },
         },
         {
           path: 'posts',
@@ -30,19 +30,19 @@ const router = createRouter({
           path: 'about',
           name: 'about',
           component: () => import('@/views/AboutView.vue'),
-          meta: { title: '关于', description: '了解 minlan01 — 一个热爱技术的开发者' },
+          meta: { title: '关于', description: '了解赤夜冥岚 — 一个热爱技术的开发者' },
         },
         {
           path: 'login',
           name: 'login',
           component: () => import('@/views/LoginView.vue'),
-          meta: { title: '登录', description: '登录 minlan01 博客账号' },
+          meta: { title: '登录', description: '登录赤夜冥岚的编程小屋账号' },
         },
         {
           path: 'register',
           name: 'register',
           component: () => import('@/views/RegisterView.vue'),
-          meta: { title: '注册', description: '注册 minlan01 博客账号' },
+          meta: { title: '注册', description: '注册赤夜冥岚的编程小屋账号' },
         },
         {
           path: 'forgot-password',
@@ -111,6 +111,12 @@ const router = createRouter({
           meta: { title: '友链', description: '友情链接 — 与优秀的技术博客互链' },
         },
         {
+          path: 'tags',
+          name: 'tags',
+          component: () => import('@/views/TagsView.vue'),
+          meta: { title: '标签', description: '按标签浏览全部文章' },
+        },
+        {
           path: 'message-board',
           name: 'message-board',
           component: () => import('@/views/MessageBoardView.vue'),
@@ -120,7 +126,7 @@ const router = createRouter({
           path: 'ai-chat',
           name: 'ai-chat',
           component: () => import('@/views/ChatView.vue'),
-          meta: { title: 'AI 对话', requiresAuth: true, description: '与 AI 助手进行技术对话' },
+          meta: { title: 'AI 对话', requiresAuth: true, requiresAdmin: true, description: '与 AI 助手进行技术对话' },
         },
         {
           path: 'stats',
@@ -140,13 +146,26 @@ const router = createRouter({
   scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) return savedPosition
     if (to.hash) return { el: to.hash, behavior: 'smooth' }
+    // out-in 动画期间不 smooth，避免视觉冲突
     return { top: 0 }
   },
 })
 
+// ── 路由预加载：hover 导航链接时预取目标页面 JS chunk ──
+// 让点击后几乎零延迟渲染，不需要等下载
+router.afterEach((to) => {
+  const route = to.matched[0]
+  const comp = route?.components?.default as any
+  if (typeof comp === 'function') {
+    comp()
+  }
+})
+
 // Auth guard
+let cachedUserRole: string | null = null
+
 router.beforeEach(async (to, _from, next) => {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
 
   if (to.meta.requiresAuth && !token) {
     next({ name: 'login', query: { redirect: to.fullPath } })
@@ -158,16 +177,23 @@ router.beforeEach(async (to, _from, next) => {
       next({ name: 'login', query: { redirect: to.fullPath } })
       return
     }
+    // 如果已缓存角色是 admin，直接放行（避免每次跳转都请求）
+    if (cachedUserRole === 'super_admin') {
+      next()
+      return
+    }
     try {
       const { getProfile } = await import('@/api/auth')
       const user = await getProfile()
+      cachedUserRole = user.role
       if (user.role !== 'super_admin') {
         next({ name: 'home' })
         return
       }
     } catch {
-      localStorage.removeItem('token')
-      localStorage.removeItem('refresh_token')
+      sessionStorage.removeItem('token')
+      localStorage.removeItem('refresh_token')  // 清理旧版残留
+      cachedUserRole = null
       next({ name: 'login', query: { redirect: to.fullPath } })
       return
     }
@@ -178,22 +204,23 @@ router.beforeEach(async (to, _from, next) => {
 
 // 动态更新页面标题 + SEO meta tags
 router.afterEach((to) => {
-  const base = 'minlan01'
+  const base = '赤夜冥岚的编程小屋'
   const pageTitle = to.meta.title as string | undefined
   const fullTitle = pageTitle ? `${pageTitle} — ${base}` : base
   document.title = fullTitle
 
   // Update meta tags
+  const defaultDescription = '赤夜冥岚的编程小屋 — 基于代码与文字构建的个人技术空间'
   const description = to.meta.description as string | undefined
-  setMeta('name', 'description', description || '一个技术博客')
+  setMeta('name', 'description', description || defaultDescription)
   setMeta('property', 'og:title', fullTitle)
-  setMeta('property', 'og:description', description || '一个技术博客')
+  setMeta('property', 'og:description', description || defaultDescription)
   setMeta('property', 'og:url', `${window.location.origin}${to.path}`)
   setMeta('property', 'og:type', 'website')
   setMeta('property', 'og:site_name', base)
   setMeta('name', 'twitter:card', 'summary_large_image')
   setMeta('name', 'twitter:title', fullTitle)
-  setMeta('name', 'twitter:description', description || '一个技术博客')
+  setMeta('name', 'twitter:description', description || defaultDescription)
 })
 
 function setMeta(attr: string, key: string, content: string) {

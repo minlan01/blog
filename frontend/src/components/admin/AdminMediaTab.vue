@@ -13,7 +13,7 @@
         <input
           ref="mediaFileInput"
           type="file"
-          accept="image/*,video/mp4,video/webm,video/quicktime,video/x-matroska,.mkv"
+          accept="image/*,video/*,audio/*,.mkv,.m4a,.mp3,.wav,.aac,.ogg"
           multiple
           class="admin-page__media-file-input"
           @change="handleMediaUpload"
@@ -27,6 +27,26 @@
         <span v-if="mediaUploadError" class="admin-page__media-status admin-page__media-status--error">
           {{ mediaUploadError }}
         </span>
+      </div>
+
+      <!-- 上传队列面板 -->
+      <div v-if="uploadQueue.length" class="upload-queue">
+        <div
+          v-for="item in uploadQueue"
+          :key="item.id"
+          class="upload-queue__item"
+          :class="`upload-queue__item--${item.status}`"
+        >
+          <span class="upload-queue__icon">
+            <svg v-if="item.status === 'success'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m20 6-11 11-5-5"/></svg>
+            <svg v-else-if="item.status === 'error'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <svg v-else-if="item.status === 'uploading'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+          </span>
+          <span class="upload-queue__name">{{ item.name }}</span>
+          <span class="upload-queue__size">{{ (item.size / 1024 / 1024).toFixed(1) }}MB</span>
+          <span class="upload-queue__status">{{ item.status === 'pending' ? '等待中' : item.status === 'uploading' ? '上传中...' : item.status === 'success' ? '完成' : item.error }}</span>
+        </div>
       </div>
 
       <div class="admin-page__media-toolbar__right">
@@ -60,13 +80,71 @@
 
     <div v-if="!mediaLoaded" class="admin-page__loading">加载中...</div>
     <div v-else-if="!mediaItems.length" class="admin-page__loading">暂无媒体文件</div>
-    <div v-else class="admin-page__media-grid">
-      <div
-        v-for="item in mediaItems"
-        :key="item.id"
-        class="admin-page__media-card"
-        :class="{ 'admin-page__media-card--selected': mediaSelectedIds.has(item.id), 'admin-page__media-card--editing': editingImgName?.id === item.id }"
-      >
+    <div v-else class="media-explorer">
+      <!-- 左侧文件夹树 -->
+      <aside class="media-sidebar">
+        <div class="media-sidebar__header">文件夹</div>
+        <button
+          class="media-folder"
+          :class="{ active: currentTypeFilter === 'all' }"
+          @click="currentTypeFilter = 'all'"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="media-folder__name">全部文件</span>
+          <span class="media-folder__count">{{ mediaItems.length }}</span>
+        </button>
+        <button
+          v-if="typeCount('image') > 0"
+          class="media-folder"
+          :class="{ active: currentTypeFilter === 'image' }"
+          @click="currentTypeFilter = 'image'"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span class="media-folder__name">图片</span>
+          <span class="media-folder__count">{{ typeCount('image') }}</span>
+        </button>
+        <button
+          v-if="typeCount('video') > 0"
+          class="media-folder"
+          :class="{ active: currentTypeFilter === 'video' }"
+          @click="currentTypeFilter = 'video'"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          <span class="media-folder__name">视频</span>
+          <span class="media-folder__count">{{ typeCount('video') }}</span>
+        </button>
+        <button
+          v-if="typeCount('audio') > 0"
+          class="media-folder"
+          :class="{ active: currentTypeFilter === 'audio' }"
+          @click="currentTypeFilter = 'audio'"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span class="media-folder__name">音乐</span>
+          <span class="media-folder__count">{{ typeCount('audio') }}</span>
+        </button>
+      </aside>
+
+      <!-- 右侧文件列表 -->
+      <div class="media-content">
+        <!-- 面包屑 -->
+        <div class="media-breadcrumb">
+          <span class="media-breadcrumb__root" @click="currentTypeFilter = 'all'">媒体库</span>
+          <template v-if="currentTypeFilter !== 'all'">
+            <span class="media-breadcrumb__sep">/</span>
+            <span class="media-breadcrumb__current">{{ folderLabel }}</span>
+          </template>
+          <span class="media-breadcrumb__count">{{ filteredMediaItems.length }} 个文件</span>
+        </div>
+
+        <!-- 文件网格 -->
+        <div class="admin-page__media-grid">
+        <div
+          v-for="item in filteredMediaItems"
+          :key="item.id"
+          class="admin-page__media-card"
+          :class="{ 'admin-page__media-card--selected': mediaSelectedIds.has(item.id), 'admin-page__media-card--editing': editingImgName?.id === item.id }"
+        >
         <div class="admin-page__media-img-wrap">
           <button
             type="button"
@@ -101,6 +179,14 @@
               @loadedmetadata="clearMediaBroken(item.id)"
               @error="markMediaBroken(item.id)"
             />
+            <div v-else-if="isAudio(item)" class="admin-page__media-audio-icon">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+              <span class="admin-page__media-audio-ext">{{ item.filename.split('.').pop()?.toUpperCase() }}</span>
+            </div>
             <span v-else class="admin-page__media-img-error">不支持预览</span>
             <span v-if="mediaBrokenIds.has(item.id)" class="admin-page__media-img-error">媒体加载失败</span>
             <span class="admin-page__media-type">{{ mediaLabel(item) }}</span>
@@ -128,9 +214,14 @@
           </template>
           <template v-else>
             <span class="admin-page__media-name" :title="item.filename">{{ item.filename }}</span>
-            <span class="admin-page__media-size">{{ formatSize(item.size) }}</span>
+            <span class="admin-page__media-meta">
+              <span class="admin-page__media-size">{{ formatSize(item.size) }}</span>
+              <span v-if="item.uploaded_by" class="admin-page__media-uploader">{{ item.uploaded_by }}</span>
+            </span>
           </template>
         </div>
+        </div>
+      </div>
       </div>
     </div>
 
@@ -151,6 +242,14 @@
               controls
               autoplay
             />
+            <div v-else-if="isAudio(previewImage)" class="admin-page__preview-audio">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+              <audio :src="mediaUrl(previewImage.url)" controls autoplay />
+            </div>
             <div class="admin-page__preview-info">
               <span>{{ previewImage.filename }}</span>
               <span class="admin-page__preview-meta">{{ formatSize(previewImage.size) }}</span>
@@ -165,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { getImages, deleteImage, updateImage, uploadImage, type ImageItem } from '@/api/admin'
 import { safeCall } from '@/api/http'
 import { useToastStore } from '@/stores/toast'
@@ -173,11 +272,58 @@ import { useToastStore } from '@/stores/toast'
 const toast = useToastStore()
 
 const mediaItems = ref<ImageItem[]>([])
+const currentTypeFilter = ref<string>('all')
+
+function typeCount(type: string): number {
+  return mediaItems.value.filter(i => {
+    if (type === 'image') return isImage(i)
+    if (type === 'video') return isVideo(i)
+    if (type === 'audio') return isAudio(i)
+    return false
+  }).length
+}
+
+const folderLabel = computed(() => {
+  if (currentTypeFilter.value === 'image') return '图片'
+  if (currentTypeFilter.value === 'video') return '视频'
+  if (currentTypeFilter.value === 'audio') return '音乐'
+  return ''
+})
 const mediaLoaded = ref(false)
+const currentUploaderFilter = ref('all')
+
+const mediaByUploader = computed(() => {
+  const groups: Record<string, ImageItem[]> = {}
+  for (const item of mediaItems.value) {
+    const uploader = item.uploaded_by || 'unknown'
+    if (!groups[uploader]) groups[uploader] = []
+    groups[uploader].push(item)
+  }
+  return groups
+})
+
+const filteredMediaItems = computed(() => {
+  let items = mediaItems.value
+  // 类型筛选
+  if (currentTypeFilter.value !== 'all') {
+    items = items.filter(i => {
+      if (currentTypeFilter.value === 'image') return isImage(i)
+      if (currentTypeFilter.value === 'video') return isVideo(i)
+      if (currentTypeFilter.value === 'audio') return isAudio(i)
+      return true
+    })
+  }
+  // 上传者筛选
+  if (currentUploaderFilter.value !== 'all') {
+    return mediaByUploader.value[currentUploaderFilter.value] || []
+  }
+  return items
+})
 const mediaUploading = ref(false)
 const mediaUploadError = ref('')
 const mediaUploadSuccess = ref('')
 const mediaUploadProgress = ref({ done: 0, total: 0 })
+const uploadQueue = ref<{ id: number; name: string; size: number; status: 'pending' | 'uploading' | 'success' | 'error'; error: string }[]>([])
 const mediaFileInput = ref<HTMLInputElement | null>(null)
 const mediaSelectedIds = ref<Set<number>>(new Set())
 const mediaBrokenIds = ref<Set<number>>(new Set())
@@ -185,19 +331,28 @@ const previewImage = ref<ImageItem | null>(null)
 const editingImgName = ref<{ id: number; filename: string } | null>(null)
 
 function isImage(item: ImageItem) {
-  return item.media_type === 'image' || item.mime_type?.startsWith('image/') || (!item.media_type && !item.mime_type?.startsWith('video/'))
+  return item.media_type === 'image' || item.mime_type?.startsWith('image/')
 }
 
 function isVideo(item: ImageItem) {
   return item.media_type === 'video' || item.mime_type?.startsWith('video/')
 }
 
+function isAudio(item: ImageItem) {
+  return item.media_type === 'music' || item.media_type === 'audio' || item.mime_type?.startsWith('audio/')
+}
+
 function mediaLabel(item: ImageItem) {
-  return isVideo(item) ? 'VIDEO' : 'IMAGE'
+  if (isVideo(item)) return 'VIDEO'
+  if (isAudio(item)) return 'AUDIO'
+  return 'IMAGE'
 }
 
 function isAllowedMedia(file: File) {
-  return file.type.startsWith('image/') || file.type.startsWith('video/') || file.name.toLowerCase().endsWith('.mkv')
+  return file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/') ||
+    file.name.toLowerCase().endsWith('.mkv') || file.name.toLowerCase().endsWith('.m4a') ||
+    file.name.toLowerCase().endsWith('.mp3') || file.name.toLowerCase().endsWith('.wav') ||
+    file.name.toLowerCase().endsWith('.aac') || file.name.toLowerCase().endsWith('.ogg')
 }
 
 function handleEditSelectedImage() {
@@ -233,29 +388,44 @@ async function handleMediaUpload(event: Event) {
   mediaUploading.value = true
   mediaUploadError.value = ''
   mediaUploadSuccess.value = ''
-  mediaUploadProgress.value = { done: 0, total: mediaFiles.length }
+
+  // 构建上传队列
+  uploadQueue.value = mediaFiles.map((f, i) => ({
+    id: i,
+    name: f.name,
+    size: f.size,
+    status: 'pending' as 'pending' | 'uploading' | 'success' | 'error',
+    error: '',
+  }))
 
   const failures: string[] = []
   try {
-    for (const file of mediaFiles) {
+    for (let i = 0; i < mediaFiles.length; i++) {
+      const file = mediaFiles[i]
+      // 标记当前文件为上传中
+      uploadQueue.value[i].status = 'uploading'
+
       try {
         await uploadImage(file)
+        uploadQueue.value[i].status = 'success'
       } catch (e: any) {
-        const reason = e?.response?.data?.detail || e?.message || '上传失败'
+        const status = e?.response?.status
+        let reason: string
+        if (status === 401) reason = '登录已过期'
+        else if (status === 413) reason = '文件过大'
+        else if (status === 415) reason = '格式不支持'
+        else reason = e?.response?.data?.detail || e?.message || '上传失败'
+        uploadQueue.value[i].status = 'error'
+        uploadQueue.value[i].error = reason
         failures.push(`${file.name}: ${reason}`)
-      } finally {
-        mediaUploadProgress.value = {
-          done: mediaUploadProgress.value.done + 1,
-          total: mediaFiles.length,
-        }
       }
     }
 
     await loadMedia()
 
+    const successCount = mediaFiles.length - failures.length
     const skipped = selectedFiles.length - mediaFiles.length
     if (failures.length) {
-      const successCount = mediaFiles.length - failures.length
       mediaUploadError.value = `${successCount} 个上传成功，${failures.length} 个失败${skipped ? `，${skipped} 个不支持的文件已跳过` : ''}`
     } else {
       mediaUploadSuccess.value = mediaFiles.length === 1 ? '上传成功' : `已上传 ${mediaFiles.length} 个媒体文件`
@@ -263,7 +433,10 @@ async function handleMediaUpload(event: Event) {
     }
   } finally {
     mediaUploading.value = false
+    mediaUploadProgress.value = { done: mediaFiles.length, total: mediaFiles.length }
     target.value = ''
+    // 3 秒后清空队列显示
+    setTimeout(() => { uploadQueue.value = [] }, 3000)
   }
 }
 
@@ -703,5 +876,315 @@ loadMedia()
   .admin-page__media-toolbar__right {
     margin-left: 0;
   }
+}
+
+.media-filter-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.media-filter-btn {
+  padding: 4px 14px;
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-soft);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.media-filter-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.media-filter-btn.active {
+  background: var(--accent-tint-12);
+  border-color: var(--accent-tint-25);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.admin-page__media-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-page__media-uploader {
+  font-size: 0.62rem;
+  color: var(--color-text-muted);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--glass-bg-08);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+/* 类型筛选 Tab — 旧样式已废弃 */
+
+/* 上传队列 */
+.upload-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--glass-surface-bg);
+}
+
+.upload-queue__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  background: var(--glass-card-bg);
+  transition: all var(--duration-fast) ease;
+}
+
+.upload-queue__item--uploading {
+  border-left: 3px solid var(--color-accent);
+}
+
+.upload-queue__item--success {
+  opacity: 0.7;
+  border-left: 3px solid var(--success-main);
+}
+
+.upload-queue__item--error {
+  border-left: 3px solid var(--error-main);
+}
+
+.upload-queue__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.upload-queue__item--success .upload-queue__icon { color: var(--success-main); }
+.upload-queue__item--error .upload-queue__icon { color: var(--error-main); }
+.upload-queue__item--uploading .upload-queue__icon { color: var(--color-accent); }
+.upload-queue__item--pending .upload-queue__icon { color: var(--color-text-muted); }
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+.upload-queue__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.upload-queue__size {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.upload-queue__status {
+  font-size: 0.7rem;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-queue__item--uploading .upload-queue__status { color: var(--color-accent); }
+.upload-queue__item--success .upload-queue__status { color: var(--success-main); }
+.upload-queue__item--error .upload-queue__status { color: var(--error-main); }
+.upload-queue__item--pending .upload-queue__status { color: var(--color-text-muted); }
+
+/* 文件管理器布局 */
+.media-explorer {
+  display: flex;
+  gap: 0;
+  min-height: 400px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.media-sidebar {
+  width: 200px;
+  min-width: 200px;
+  border-right: 1px solid var(--border-default);
+  padding: 0.5rem 0;
+  background: var(--glass-surface-bg);
+}
+
+.media-sidebar__header {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  padding: 0.5rem 1rem;
+}
+
+.media-folder {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--color-text-soft);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  text-align: left;
+}
+
+.media-folder:hover {
+  background: var(--glass-bg-08);
+  color: var(--color-text);
+}
+
+.media-folder.active {
+  background: var(--accent-tint-06);
+  color: var(--color-accent);
+  border-left: 3px solid var(--color-accent);
+  padding-left: calc(1rem - 3px);
+}
+
+.media-folder__name {
+  flex: 1;
+}
+
+.media-folder__count {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  background: var(--glass-bg-12);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+}
+
+.media-folder.active .media-folder__count {
+  background: var(--accent-tint-15);
+  color: var(--color-accent);
+}
+
+.media-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.media-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border-default);
+  font-size: 0.8rem;
+  background: var(--glass-card-bg);
+}
+
+.media-breadcrumb__root {
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color var(--duration-fast) ease;
+}
+
+.media-breadcrumb__root:hover {
+  color: var(--color-accent);
+}
+
+.media-breadcrumb__sep {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.media-breadcrumb__current {
+  color: var(--color-text-heading);
+  font-weight: 500;
+}
+
+.media-breadcrumb__count {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.admin-page__media-grid {
+  padding: 1rem;
+}
+
+@media (max-width: 768px) {
+  .media-explorer {
+    flex-direction: column;
+  }
+  .media-sidebar {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-default);
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0.5rem;
+  }
+  .media-sidebar__header {
+    width: 100%;
+  }
+  .media-folder {
+    width: auto;
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+/* 音频卡片图标 */
+.admin-page__media-audio-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 0.5rem;
+  color: var(--color-accent);
+  opacity: 0.6;
+}
+
+.admin-page__media-audio-ext {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+/* 音频预览弹窗 */
+.admin-page__preview-audio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  color: var(--color-accent);
+}
+
+.admin-page__preview-audio audio {
+  width: 100%;
+  min-width: 300px;
 }
 </style>

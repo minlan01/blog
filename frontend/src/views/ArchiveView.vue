@@ -185,6 +185,17 @@ onMounted(async () => {
   gap: var(--space-md);
   margin-bottom: var(--space-lg);
   margin-left: -25px;
+  position: sticky;
+  top: calc(var(--header-height, 64px) + var(--space-sm));
+  z-index: 5;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--glass-card-bg, rgba(20, 20, 35, 0.8));
+  backdrop-filter: blur(12px) saturate(1.5);
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  width: fit-content;
+  transition: all var(--duration-fast) ease;
 }
 
 .archive-page__year-dot {
@@ -249,6 +260,21 @@ onMounted(async () => {
   text-decoration: none;
   color: var(--color-text);
   transition: all var(--duration-fast) ease;
+  /* Scroll-triggered fade-in (browser supports animation-timeline: view()) */
+  animation: archive-fade-in both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 22%;
+}
+
+@keyframes archive-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .archive-page__post:hover {

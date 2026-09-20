@@ -1,0 +1,106 @@
+/* ========================================
+   md-editor-v3 全局样式覆盖
+   让编辑器融入博客毛玻璃面板，而非默认纯白
+   ======================================== */
+
+/* 编辑器根容器去边框去背景，由外层 .editor__md-wrap 控制 */
+.editor__md-wrap .md-editor {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--color-text);
+}
+
+/* 工具栏 */
+.editor__md-wrap .md-editor .md-editor-toolbar-wrapper {
+  background: var(--glass-surface-bg) !important;
+  border-bottom: 1px solid var(--color-border);
+  padding: 6px 8px;
+}
+
+.editor__md-wrap .md-editor .md-editor-toolbar-wrapper button {
+  color: var(--color-text-soft);
+}
+
+.editor__md-wrap .md-editor .md-editor-toolbar-wrapper button:hover {
+  color: var(--color-accent);
+  background: var(--accent-tint-08);
+  border-radius: var(--radius-sm);
+}
+
+/* 输入/预览区域透明 */
+.editor__md-wrap .md-editor .md-editor-input-wrapper,
+.editor__md-wrap .md-editor .md-editor-preview-wrapper,
+.editor__md-wrap .md-editor textarea,
+.editor__md-wrap .md-editor .md-editor-preview {
+  background: transparent !important;
+  color: var(--color-text);
+}
+
+.editor__md-wrap .md-editor textarea {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  padding: 14px 16px;
+}
+
+/* 分屏预览的分隔线 */
+.editor__md-wrap .md-editor .md-editor-preview {
+  border-left: 1px solid var(--color-border);
+  padding: 14px 18px;
+}
+
+/* 预览区域 Markdown 内容配色继承 */
+.editor__md-wrap .md-editor .md-editor-preview {
+  color: var(--color-text);
+}
+
+.editor__md-wrap .md-editor .md-editor-preview h1,
+.editor__md-wrap .md-editor .md-editor-preview h2,
+.editor__md-wrap .md-editor .md-editor-preview h3,
+.editor__md-wrap .md-editor .md-editor-preview h4 {
+  color: var(--color-text-heading);
+}
+
+.editor__md-wrap .md-editor .md-editor-preview a {
+  color: var(--color-accent);
+}
+
+.editor__md-wrap .md-editor .md-editor-preview code {
+  background: var(--glass-bg-12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.editor__md-wrap .md-editor .md-editor-preview pre {
+  background: var(--color-bg-deep) !important;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.editor__md-wrap .md-editor .md-editor-preview blockquote {
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-text-muted);
+  background: var(--accent-tint-06);
+  padding: 8px 14px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.editor__md-wrap .md-editor .md-editor-preview table {
+  border-color: var(--color-border);
+}
+
+.editor__md-wrap .md-editor .md-editor-preview th,
+.editor__md-wrap .md-editor .md-editor-preview td {
+  border-color: var(--color-border);
+}
+
+.editor__md-wrap .md-editor .md-editor-preview hr {
+  border-color: var(--color-border);
+}
+
+/* 暗色主题微调（md-editor 自带 dark 变量时） */
+[data-theme="dark"] .editor__md-wrap .md-editor .md-editor-preview pre {
+  background: rgba(0, 0, 0, 0.3) !important;
+}
