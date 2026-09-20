@@ -139,6 +139,20 @@ Sitemap: https://chiyeblog.cn/api/v1/sitemap.xml
 
 **处置**：Nginx 收口为 `200m`——站内音乐功能需要上传 FLAC（几十 MB 级），15m 会破坏音乐上传；200m 在功能与滥用面之间取平衡。后端默认值保持 1024，由 Nginx 作为第一道闸门。
 
+### P2：Markdown 渲染 XSS 面评估 ✅ 已验证（2026-09-20，无需新增依赖）
+
+历史计划曾建议引入 nh3 做服务端 Markdown 消毒。逐点核实当前架构后确认**等价防线已在每个实际出口就位**，无需引入：
+
+| v-html 出口 | 渲染方 | 防线 |
+|---|---|---|
+| 文章正文 `PostDetailView` | 前端 markdown-it | `html: false`，原始 HTML 一律转义 |
+| 评论 `CommentItem` | 前端 markdown-it | `html: false` |
+| 搜索摘要 `SearchBar` | 后端 FTS `sanitize_snippet` | 全文 `html.escape` 仅保留 `<mark>`，畸形标签兜底 |
+| FTS MATCH 查询 | 后端 | 特殊字符剥离 + 逐词引号包裹 |
+| RSS | 后端 | `xml_escape` |
+
+后端不存在 markdown→HTML 渲染管线（OG 图用 PIL 绘制、RSS 直接拼 XML），引入 nh3 无作用对象。markdown-it 默认链接校验已拦截 `javascript:`/`data:` 类 img/link 协议。
+
 ### P2：Caddy HSTS 头缺少 preload ⏳ 可选
 
 服务器 Caddyfile 当前为 `max-age=31536000; includeSubDomains`。如未来提交 HSTS preload list，追加 `; preload`。
