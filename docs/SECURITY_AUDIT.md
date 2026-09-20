@@ -131,17 +131,13 @@ Sitemap: https://chiyeblog.cn/api/v1/sitemap.xml
 
 当前 `connect-src 'self'`。当前不影响功能；未来前端需要请求外部 API 时按需扩展。
 
-### P2：client_max_body_size 过大 ⏳ 未修
+### P2：client_max_body_size 过大 ✅ 已修（2026-09-20）
 
 **文件**：`frontend/nginx.conf`
 
-```nginx
-client_max_body_size 1024m;
-```
+原值 `1024m` 与后端 `MAX_UPLOAD_SIZE_MB=1024` 一致，但对个人博客而言滥用面过大。
 
-后端 `MAX_UPLOAD_SIZE_MB=10`，但 Nginx 允许 1024MB 上传，攻击者可发大文件消耗带宽。
-
-**建议**：改为 `client_max_body_size 15m;`（略大于后端限制，留 multipart 余量）。
+**处置**：Nginx 收口为 `200m`——站内音乐功能需要上传 FLAC（几十 MB 级），15m 会破坏音乐上传；200m 在功能与滥用面之间取平衡。后端默认值保持 1024，由 Nginx 作为第一道闸门。
 
 ### P2：Caddy HSTS 头缺少 preload ⏳ 可选
 
@@ -186,7 +182,7 @@ client_max_body_size 1024m;
 ### 待办 ⏳
 
 - [ ] **确认 DeepSeek API Key 状态**：若曾怀疑泄露，去后台轮换
-- [ ] **client_max_body_size 改为 15m**
+- [x] **client_max_body_size 收口为 200m**（音乐上传需要几十 MB 余量）
 - [ ] Caddy HSTS 加 preload（可选）
 - [ ] 有暴力攻击迹象时再加 hCaptcha（可选）
 
