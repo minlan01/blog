@@ -194,7 +194,7 @@ echo "[$TIMESTAMP] Backup completed successfully"
 # 内容示例：
 # export BACKUP_ENCRYPTION_PASS="your-strong-passphrase"
 # export BACKUP_ADMIN_USER="minlan01"
-# export BACKUP_ADMIN_PASS="@Zth20020619"
+# export BACKUP_ADMIN_PASS="<ADMIN_PASSWORD 占位，原文见密码管理器>"
 
 # 每天凌晨 3 点：日备份 + 异地同步
 0 3 * * * . /root/.backup_env && /opt/blog/scripts/backup.sh daily >> /opt/blog/backups/backup.log 2>&1
@@ -483,6 +483,6 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 | # | 补充项 | v2 问题 | v2.1 修复 |
 |---|--------|---------|-----------|
-| 1 | 备份脚本管理员密码 | 硬编码 `@Zth20020619` 调文章导出接口，root 被入侵后泄露 | 改为 `BACKUP_ADMIN_PASS` 环境变量，存入 `/root/.backup_env` |
+| 1 | 备份脚本管理员密码 | 硬编码 `<ADMIN_PASSWORD 占位，原文见密码管理器>` 调文章导出接口，root 被入侵后泄露 | 改为 `BACKUP_ADMIN_PASS` 环境变量，存入 `/root/.backup_env` |
 | 2 | 云存储版本控制 | 只说了"独立凭证"，没提版本控制 | 补充：Bucket 必须开启 Versioning 或 Object Lock，防远端被删 |
 | 3 | .gitignore | 缺 `.secret_key`、`backup.sh`、`backups/` | 已补上，防止敏感文件误提交 Git |
