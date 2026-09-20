@@ -32,6 +32,9 @@
                 </button>
               </div>
             </div>
+            <div v-if="hcaptchaEnabled" class="auth-page__field">
+              <div ref="hcaptchaEl"></div>
+            </div>
             <button type="submit" class="auth-page__submit" :disabled="submitting || !!usernameError">
               {{ submitting ? '登录中...' : '登录' }}
             </button>
@@ -60,10 +63,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getGithubLoginUrl } from '@/api/auth'
+import { getGithubLoginUrl, getHcaptchaConfig } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -76,6 +79,62 @@ const error = ref('')
 const usernameError = ref('')
 const submitting = ref(false)
 const showPassword = ref(false)
+
+// hCaptcha：后端配置了密钥才启用；未启用时与原登录流程完全一致
+const hcaptchaEnabled = ref(false)
+const hcaptchaSitekey = ref('')
+const hcaptchaToken = ref('')
+const hcaptchaEl = ref<HTMLElement | null>(null)
+let hcaptchaWidgetId: string | null = null
+
+onMounted(async () => {
+  try {
+    const cfg = await getHcaptchaConfig()
+    hcaptchaEnabled.value = cfg.enabled
+    hcaptchaSitekey.value = cfg.sitekey
+    if (cfg.enabled) await loadHcaptcha()
+  } catch {
+    hcaptchaEnabled.value = false
+  }
+})
+
+function loadHcaptcha(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const w = window as any
+    if (w.hcaptcha) {
+      renderWidget()
+      resolve()
+      return
+    }
+    const s = document.createElement('script')
+    s.src = 'https://js.hcaptcha.com/1/api.js?render=explicit'
+    s.async = true
+    s.onload = () => {
+      renderWidget()
+      resolve()
+    }
+    s.onerror = () => reject(new Error('hcaptcha script failed'))
+    document.head.appendChild(s)
+  })
+  function renderWidget() {
+    const w = window as any
+    if (!hcaptchaEl.value || hcaptchaWidgetId !== null) return
+    hcaptchaWidgetId = w.hcaptcha.render(hcaptchaEl.value, {
+      sitekey: hcaptchaSitekey.value,
+      callback: (token: string) => {
+        hcaptchaToken.value = token
+      },
+    })
+  }
+}
+
+function resetHcaptcha() {
+  const w = window as any
+  if (hcaptchaWidgetId !== null && w.hcaptcha) {
+    w.hcaptcha.reset(hcaptchaWidgetId)
+    hcaptchaToken.value = ''
+  }
+}
 
 // Show session expired notice if redirected from token refresh failure
 if (sessionStorage.getItem('auth_expired')) {
@@ -99,11 +158,17 @@ async function handleLogin() {
   error.value = ''
   submitting.value = true
   try {
-    await authStore.login(username.value, password.value)
+    if (hcaptchaEnabled.value && !hcaptchaToken.value) {
+      error.value = '请先完成 hCaptcha 人机验证'
+      submitting.value = false
+      return
+    }
+    await authStore.login(username.value, password.value, hcaptchaToken.value || undefined)
     const redirect = (route.query.redirect as string) || '/'
     router.push(redirect)
   } catch (e: any) {
     error.value = e?.response?.data?.detail || '登录失败，请检查用户名和密码'
+    resetHcaptcha()
   } finally {
     submitting.value = false
   }

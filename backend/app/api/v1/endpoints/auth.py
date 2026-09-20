@@ -138,9 +138,29 @@ def register(request: Request, body: RegisterWithCaptcha, db: DBSession):
     return user
 
 
+@router.get("/hcaptcha-config")
+def get_hcaptcha_config():
+    """hCaptcha 开关：两项密钥都配置时启用；未配置时登录流程与无验证码完全一致"""
+    enabled = bool(settings.HCAPTCHA_SITEKEY and settings.HCAPTCHA_SECRET)
+    return {"enabled": enabled, "sitekey": settings.HCAPTCHA_SITEKEY if enabled else ""}
+
+
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
 def login(request: Request, response: Response, body: LoginRequest, db: DBSession):
+    if settings.HCAPTCHA_SECRET:
+        if not body.hcaptcha_token:
+            raise HTTPException(status_code=400, detail="请先完成 hCaptcha 人机验证")
+        import httpx
+
+        verify = httpx.post(
+            "https://api.hcaptcha.com/siteverify",
+            data={"secret": settings.HCAPTCHA_SECRET, "response": body.hcaptcha_token},
+            timeout=10,
+        )
+        if not verify.json().get("success"):
+            raise HTTPException(status_code=400, detail="hCaptcha 验证失败，请重试")
+
     user = db.scalar(select(User).where(User.username == body.username))
 
     # Check if account is locked

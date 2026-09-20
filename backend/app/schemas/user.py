@@ -56,6 +56,7 @@ class RefreshRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    hcaptcha_token: str | None = None
 
 
 class ForgotPasswordRequest(BaseModel):

@@ -12,8 +12,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.role === 'super_admin')
   const username = computed(() => user.value?.username ?? '')
 
-  async function login(usernameInput: string, password: string) {
-    const data = await apiLogin(usernameInput, password)
+  async function login(usernameInput: string, password: string, hcaptchaToken?: string) {
+    const data = await apiLogin(usernameInput, password, hcaptchaToken)
     token.value = data.access_token
     sessionStorage.setItem('token', data.access_token)
     // refresh_token 现在由后端通过 httpOnly cookie 设置，前端不再持有

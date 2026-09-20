@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = "blog-media"
     MINIO_SECURE: bool = False
 
+    # hCaptcha（登录防爆破；两项都配置才启用，未配置时登录流程不校验）
+    HCAPTCHA_SITEKEY: str = ""
+    HCAPTCHA_SECRET: str = ""
+
     # Environment
     ENV: str = "production"  # "production" | "development" | "test"
 

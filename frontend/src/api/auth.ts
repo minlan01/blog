@@ -7,8 +7,17 @@ interface TokenResponse {
   token_type: string
 }
 
-export async function login(username: string, password: string): Promise<TokenResponse> {
-  const { data } = await http.post<TokenResponse>('/auth/login', { username, password })
+export async function login(username: string, password: string, hcaptchaToken?: string): Promise<TokenResponse> {
+  const { data } = await http.post<TokenResponse>('/auth/login', {
+    username,
+    password,
+    hcaptcha_token: hcaptchaToken || undefined,
+  })
+  return data
+}
+
+export async function getHcaptchaConfig(): Promise<{ enabled: boolean; sitekey: string }> {
+  const { data } = await http.get('/auth/hcaptcha-config')
   return data
 }
 
