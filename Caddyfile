@@ -2,11 +2,11 @@ chiyeblog.cn, www.chiyeblog.cn {
     encode gzip
 
     request_body {
-        max_size 1024MB
+        max_size 200MB
     }
 
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options nosniff
         X-Frame-Options DENY
         Referrer-Policy strict-origin-when-cross-origin
