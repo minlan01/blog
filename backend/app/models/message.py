@@ -17,6 +17,7 @@ class Message(Base):
     parent_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("messages.id"), nullable=True, index=True)
     admin_reply: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_reply_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending / approved / rejected
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Self-referential: parent message's replies = all messages whose parent_id == this message's id

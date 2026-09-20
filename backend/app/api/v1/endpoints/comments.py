@@ -8,18 +8,15 @@ from app.api.v1.deps import DBSession, CurrentUser
 from app.models.comment import Comment
 from app.models.post import Post
 from app.schemas.comment import CommentCreate, CommentRead, comment_to_read
+from app.utils.tree import collect_descendant_ids
 
 router = APIRouter(prefix="/comments", tags=["comments"])
 limiter = Limiter(key_func=get_remote_address)
 
 
-def _collect_comment_descendant_ids(db, comment_id: int) -> list[int]:
-    ids: list[int] = []
+def _get_comment_children(db, comment_id: int) -> list[tuple[int]]:
     children = list(db.scalars(select(Comment).where(Comment.parent_id == comment_id)).all())
-    for child in children:
-        ids.append(child.id)
-        ids.extend(_collect_comment_descendant_ids(db, child.id))
-    return ids
+    return [(c.id,) for c in children]
 
 
 @router.get("", response_model=list[CommentRead])
@@ -27,7 +24,11 @@ def list_comments(post_id: int, db: DBSession):
     stmt = (
         select(Comment)
         .options(joinedload(Comment.author), joinedload(Comment.replies))
-        .where(Comment.post_id == post_id, Comment.parent_id.is_(None))
+        .where(
+            Comment.post_id == post_id,
+            Comment.parent_id.is_(None),
+            Comment.is_approved == True,  # 公共接口只返回已审核评论
+        )
         .order_by(Comment.created_at.asc())
     )
     comments = list(db.scalars(stmt).unique().all())
@@ -74,10 +75,92 @@ def delete_comment(comment_id: int, db: DBSession, user: CurrentUser):
         raise HTTPException(status_code=404, detail="评论不存在")
     if comment.user_id != user.id and user.role != "super_admin":
         raise HTTPException(status_code=403, detail="无权删除此评论")
-    descendant_ids = _collect_comment_descendant_ids(db, comment_id)
+    descendant_ids = collect_descendant_ids(comment_id, lambda cid: _get_comment_children(db, cid))
     for cid in reversed(descendant_ids):
         c = db.get(Comment, cid)
         if c:
             db.delete(c)
     db.delete(comment)
     db.commit()
+
+
+# ── Emoji Reactions ──
+
+ALLOWED_EMOJIS = {"👍", "❤️", "😂", "🎉", "🚀", "👀"}
+
+
+@router.post("/{comment_id}/reactions")
+def toggle_comment_reaction(
+    comment_id: int,
+    body: dict,
+    db: DBSession,
+    user: CurrentUser,
+):
+    """Toggle an emoji reaction on a comment. Idempotent."""
+    from app.models.comment_reaction import CommentReaction
+
+    emoji = body.get("emoji", "").strip()
+    if emoji not in ALLOWED_EMOJIS:
+        raise HTTPException(status_code=422, detail=f"Invalid emoji. Allowed: {ALLOWED_EMOJIS}")
+
+    comment = db.get(Comment, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="评论不存在")
+
+    existing = db.scalar(
+        select(CommentReaction).where(
+            CommentReaction.comment_id == comment_id,
+            CommentReaction.user_id == user.id,
+            CommentReaction.emoji == emoji,
+        )
+    )
+
+    if existing:
+        db.delete(existing)
+        db.commit()
+        action = "removed"
+    else:
+        reaction = CommentReaction(
+            comment_id=comment_id,
+            user_id=user.id,
+            emoji=emoji,
+        )
+        db.add(reaction)
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            action = "exists"
+        else:
+            action = "added"
+
+    # Get counts for this emoji on this comment
+    from sqlalchemy import func as _func
+    count = db.scalar(
+        select(_func.count()).select_from(CommentReaction).where(
+            CommentReaction.comment_id == comment_id,
+            CommentReaction.emoji == emoji,
+        )
+    ) or 0
+
+    return {"action": action, "emoji": emoji, "count": count}
+
+
+@router.get("/{comment_id}/reactions")
+def get_comment_reactions(comment_id: int, db: DBSession):
+    """Get all emoji reactions for a comment."""
+    from app.models.comment_reaction import CommentReaction
+    from sqlalchemy import func as _func
+
+    if not db.get(Comment, comment_id):
+        raise HTTPException(status_code=404, detail="评论不存在")
+
+    rows = db.execute(
+        select(
+            CommentReaction.emoji,
+            _func.count().label("count"),
+        ).where(CommentReaction.comment_id == comment_id)
+        .group_by(CommentReaction.emoji)
+    ).all()
+
+    return {"reactions": [{"emoji": r[0], "count": r[1]} for r in rows]}

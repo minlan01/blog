@@ -1,3 +1,5 @@
+import io
+import logging
 import os
 import re
 import tempfile
@@ -13,11 +15,18 @@ from sqlalchemy import select
 from app.api.v1.deps import DBSession, SuperAdmin
 from app.core.config import settings
 from app.models.image import Image
-from app.services.object_storage import ensure_local_upload_dir, storage
+from app.services.object_storage import ensure_local_upload_dir, get_object_storage
+
+logger = logging.getLogger("blog")
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 UPLOAD_DIR = os.path.join("uploads", "images")
+
+# Image compression settings
+MAX_IMAGE_DIMENSION = 1920       # Max width/height in pixels
+IMAGE_QUALITY = 85               # JPEG/WebP quality (1-100)
+AVATAR_MAX_DIMENSION = 512       # Avatars are smaller
 CHUNK_SIZE = 1024 * 1024
 SVG_MAX_BYTES = 5 * 1024 * 1024
 
@@ -44,6 +53,16 @@ MIME_EXTENSIONS = {
     "video/webm": "webm",
     "video/quicktime": "mov",
     "video/x-matroska": "mkv",
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/aac": "aac",
+    "audio/x-m4a": "m4a",
+    "audio/mp4": "m4a",
+    "audio/ogg": "ogg",
+    "audio/webm": "weba",
+    "audio/flac": "flac",
 }
 
 ALLOWED_EXTENSIONS = set(MIME_EXTENSIONS.values()) | {"jpeg"}
@@ -67,6 +86,8 @@ def _normalize_mime(content_type: str | None) -> str:
 def _media_kind(mime_type: str) -> str:
     if mime_type.startswith("video/"):
         return "video"
+    if mime_type.startswith("audio/"):
+        return "music"
     return "image"
 
 
@@ -101,11 +122,85 @@ def _check_magic_bytes(head: bytes, declared_mime: str, temp_path: str, size: in
     if declared_mime in {"video/webm", "video/x-matroska"}:
         return head.startswith(b"\x1a\x45\xdf\xa3")
 
+    # 音频文件魔数校验
+    if declared_mime == "audio/mpeg" or declared_mime == "audio/mp3":
+        return head.startswith(b"\xff\xfb") or head.startswith(b"\xff\xf3") or head.startswith(b"\xff\xf2") or head.startswith(b"ID3")
+    if declared_mime in {"audio/wav", "audio/x-wav"}:
+        return head.startswith(b"RIFF") and b"WAVE" in head[:12]
+    if declared_mime in {"audio/aac", "audio/mp4", "audio/x-m4a"}:
+        # m4a/aac 容器：ftyp box 在 offset 4，或 ADTS 原始流以 \xff\xf1/\xff\xf9 开头
+        return head.startswith(b"\xff\xf1") or head.startswith(b"\xff\xf9") or head[4:8] == b"ftyp"
+    if declared_mime == "audio/ogg":
+        return head.startswith(b"OggS")
+    if declared_mime == "audio/webm":
+        return head.startswith(b"\x1a\x45\xdf\xa3")
+    if declared_mime == "audio/flac":
+        return head.startswith(b"fLaC")
+
     return False
 
 
+def _compress_image(temp_path: str, mime_type: str, max_dim: int = MAX_IMAGE_DIMENSION) -> tuple[str, int, str]:
+    """Compress and resize an image using Pillow.
+
+    Returns (path, new_size, new_mime_type).
+    If Pillow is not available or image is not processable, returns original.
+    """
+    try:
+        from PIL import Image as PILImage
+    except ImportError:
+        return temp_path, os.path.getsize(temp_path), mime_type
+
+    try:
+        img = PILImage.open(temp_path)
+
+        # Strip EXIF rotation but keep quality
+        from PIL import ImageOps
+        img = ImageOps.exif_transpose(img)
+
+        # Convert RGBA/P to RGB for JPEG
+        if img.mode in ("RGBA", "P", "LA"):
+            bg = PILImage.new("RGB", img.size, (255, 255, 255))
+            if img.mode == "P":
+                img = img.convert("RGBA")
+            bg.paste(img, mask=img.split()[-1] if img.mode in ("RGBA", "LA") else None)
+            img = bg
+
+        # Resize if exceeds max dimension
+        w, h = img.size
+        if max(w, h) > max_dim:
+            ratio = max_dim / max(w, h)
+            img = img.resize((int(w * ratio), int(h * ratio)), PILImage.LANCZOS)
+
+        # Save compressed
+        buf = io.BytesIO()
+        # Always output JPEG for photos (smaller than PNG for photos)
+        output_mime = "image/jpeg"
+        ext = "jpg"
+        img.save(buf, format="JPEG", quality=IMAGE_QUALITY, optimize=True)
+        new_data = buf.getvalue()
+        new_size = len(new_data)
+
+        # Overwrite temp file
+        with open(temp_path, "wb") as f:
+            f.write(new_data)
+
+        logger.info("Image compressed: %dx%d → %dx%d, %d → %d bytes",
+                    w, h, img.size[0], img.size[1], os.path.getsize(temp_path), new_size)
+        return temp_path, new_size, output_mime
+
+    except Exception as e:
+        logger.warning("Image compression failed (using original): %s", e)
+        return temp_path, os.path.getsize(temp_path), mime_type
+
+
 async def _stream_to_temp(file: UploadFile) -> tuple[str, int, bytes]:
-    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    declared_mime = _normalize_mime(file.content_type)
+    # 视频单独限制 100MB（2G 服务器内存瓶颈）
+    if declared_mime.startswith("video/"):
+        max_bytes = 100 * 1024 * 1024
+    else:
+        max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     tmp = tempfile.NamedTemporaryFile(delete=False)
     temp_path = tmp.name
     total = 0
@@ -117,6 +212,11 @@ async def _stream_to_temp(file: UploadFile) -> tuple[str, int, bytes]:
                 break
             total += len(chunk)
             if total > max_bytes:
+                if declared_mime.startswith("video/"):
+                    raise HTTPException(
+                        status_code=413,
+                        detail="视频文件不能超过 100MB",
+                    )
                 raise HTTPException(
                     status_code=413,
                     detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE_MB}MB",
@@ -169,7 +269,14 @@ def _stored_name(original_name: str | None, mime_type: str) -> str:
 
 def _object_key(media_type: str, filename: str) -> str:
     today = datetime.now(timezone.utc).strftime("%Y/%m")
-    folder = "videos" if media_type == "video" else "images"
+    if media_type == "video":
+        folder = "videos"
+    elif media_type == "music":
+        folder = "music"
+    elif media_type == "audio":
+        folder = "audios"
+    else:
+        folder = "images"
     return f"{folder}/{today}/{filename}"
 
 
@@ -212,14 +319,23 @@ async def upload_file(_admin: SuperAdmin, db: DBSession, file: UploadFile = File
     try:
         mime_type = _validate_file(file, temp_path, size, head)
         media_type = _media_kind(mime_type)
+
+        # Auto-compress images
+        if media_type == "image":
+            temp_path, size, mime_type = _compress_image(temp_path, mime_type)
+
         stored_name = _stored_name(file.filename, mime_type)
         object_key = _object_key(media_type, stored_name)
+        original_name = file.filename or stored_name  # 保留原始文件名（中文）
+        uploader_label = f"{_admin.username}_{_admin.email or 'no-email'}"
 
         if settings.use_minio:
-            with open(temp_path, "rb") as f:
-                storage.put_file(object_key, f, size, mime_type)
+            obj_store = get_object_storage()
+            if obj_store:
+                with open(temp_path, "rb") as f:
+                    obj_store.put_file(object_key, f, size, mime_type)
             img = Image(
-                filename=stored_name,
+                filename=original_name,
                 mime_type=mime_type,
                 data=None,
                 file_path=None,
@@ -227,21 +343,26 @@ async def upload_file(_admin: SuperAdmin, db: DBSession, file: UploadFile = File
                 storage_backend="minio",
                 media_type=media_type,
                 size=size,
+                uploaded_by=uploader_label,
             )
         else:
             ensure_local_upload_dir()
-            local_path = os.path.join(UPLOAD_DIR, stored_name)
+            # Organize by user folder
+            user_upload_dir = os.path.join(UPLOAD_DIR, uploader_label)
+            os.makedirs(user_upload_dir, exist_ok=True)
+            local_path = os.path.join(user_upload_dir, stored_name)
             os.replace(temp_path, local_path)
             temp_path = ""
             img = Image(
-                filename=stored_name,
+                filename=original_name,
                 mime_type=mime_type,
                 data=None,
-                file_path=stored_name,
+                file_path=f"{uploader_label}/{stored_name}",
                 object_key=None,
                 storage_backend="local",
                 media_type=media_type,
                 size=size,
+                uploaded_by=uploader_label,
             )
 
         db.add(img)
@@ -249,12 +370,13 @@ async def upload_file(_admin: SuperAdmin, db: DBSession, file: UploadFile = File
         db.refresh(img)
 
         return {
-            "url": f"/upload/{img.id}",
-            "filename": stored_name,
+            "url": f"/api/v1/upload/{img.id}",
+            "filename": original_name,
             "id": img.id,
             "size": img.size,
             "mime_type": img.mime_type,
             "media_type": img.media_type,
+            "uploaded_by": uploader_label,
             "created_at": img.created_at,
         }
     finally:
@@ -262,7 +384,24 @@ async def upload_file(_admin: SuperAdmin, db: DBSession, file: UploadFile = File
             os.remove(temp_path)
 
 
+@router.get("/music")
+def list_music(db: DBSession, limit: int = Query(default=50, ge=1, le=200)):
+    """公开接口 — 获取音乐列表（无需登录）"""
+    images = list(db.scalars(
+        select(Image).where(Image.media_type == "music").order_by(Image.created_at.desc()).limit(limit)
+    ).all())
+    return [
+        {
+            "id": img.id,
+            "filename": img.filename,
+            "url": f"/api/v1/upload/{img.id}",
+        }
+        for img in images
+    ]
+
+
 @router.get("/{image_id}")
+@router.head("/{image_id}")
 def get_image(image_id: int, request: Request, db: DBSession):
     img = db.get(Image, image_id)
     if not img:
@@ -272,14 +411,23 @@ def get_image(image_id: int, request: Request, db: DBSession):
         "Cache-Control": "public, max-age=86400, immutable",
         "ETag": f'"{img.id}"',
         "Accept-Ranges": "bytes",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
     }
+    # SVG 文件额外加 CSP 阻止脚本执行，强制下载（防存储型 XSS）
+    if img.mime_type == "image/svg+xml":
+        headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+        headers["Content-Disposition"] = 'attachment; filename="image.svg"'
 
     if img.storage_backend == "minio" and img.object_key:
         byte_range = _parse_range(request.headers.get("range"), img.size)
         if byte_range:
             start, end = byte_range
             length = end - start + 1
-            object_response = storage.get_file(img.object_key, offset=start, length=length)
+            object_response = None
+            obj_store = get_object_storage()
+            if obj_store:
+                object_response = obj_store.get_file(img.object_key, offset=start, length=length)
             if object_response is not None:
                 range_headers = {
                     **headers,
@@ -293,7 +441,11 @@ def get_image(image_id: int, request: Request, db: DBSession):
                     headers=range_headers,
                 )
 
-        object_response = storage.get_file(img.object_key)
+        obj_store = get_object_storage()
+        if obj_store:
+            object_response = obj_store.get_file(img.object_key)
+        else:
+            object_response = None
         if object_response is not None:
             return StreamingResponse(
                 _iter_object_response(object_response),
@@ -319,10 +471,11 @@ def list_images(_admin: SuperAdmin, db: DBSession, limit: int = Query(default=20
         {
             "id": img.id,
             "filename": img.filename,
-            "url": f"/upload/{img.id}",
+            "url": f"/api/v1/upload/{img.id}",
             "size": img.size,
             "mime_type": img.mime_type,
             "media_type": img.media_type,
+            "uploaded_by": img.uploaded_by or "unknown",
             "created_at": img.created_at,
         }
         for img in images
@@ -336,7 +489,9 @@ def delete_image(image_id: int, _admin: SuperAdmin, db: DBSession):
         return Response(status_code=404)
 
     if img.storage_backend == "minio" and img.object_key:
-        storage.remove_file(img.object_key)
+        obj_store = get_object_storage()
+        if obj_store:
+            obj_store.remove_file(img.object_key)
     elif img.file_path:
         full_path = img.stored_path
         if os.path.isfile(full_path):
@@ -357,7 +512,7 @@ def update_image(image_id: int, body: ImageUpdate, _admin: SuperAdmin, db: DBSes
     return {
         "id": img.id,
         "filename": img.filename,
-        "url": f"/upload/{img.id}",
+        "url": f"/api/v1/upload/{img.id}",
         "size": img.size,
         "mime_type": img.mime_type,
         "media_type": img.media_type,

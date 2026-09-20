@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -39,6 +38,10 @@ app = FastAPI(
     title=settings.APP_NAME,
     version="0.2.0",
     lifespan=lifespan,
+    # 生产环境关闭 API 文档暴露
+    docs_url=None if settings.ENV == "production" else "/docs",
+    redoc_url=None if settings.ENV == "production" else "/redoc",
+    openapi_url=None if settings.ENV == "production" else "/openapi.json",
 )
 
 # ── Rate Limiter ──
@@ -51,17 +54,21 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["*"],
 )
 
 
 # ── 请求日志 + 安全头中间件 ──
+from app.core.request_log import log_request, _extract_user_id, _get_client_ip
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.perf_counter()
     response = await call_next(request)
     elapsed = (time.perf_counter() - start) * 1000
+
+    # 标准日志输出
     logger.info(
         "%s %s → %d (%.1fms)",
         request.method,
@@ -69,18 +76,33 @@ async def log_requests(request: Request, call_next):
         response.status_code,
         elapsed,
     )
-    # Security headers
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    response.headers[
-        "Content-Security-Policy"
-    ] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+
+    # 结构化日志写入环形缓冲（供 AI 运维接口查询）
+    log_request(
+        method=request.method,
+        path=request.url.path,
+        status=response.status_code,
+        elapsed_ms=elapsed,
+        ip=_get_client_ip(request),
+        user_id=_extract_user_id(request),
+        user_agent=request.headers.get("user-agent", ""),
+    )
+
     return response
 
 
 # ── 全局异常处理 ──
+from app.core.exceptions import BlogError
+
+@app.exception_handler(BlogError)
+async def blog_error_handler(request: Request, exc: BlogError):
+    logger.warning("业务异常: %s %s → %s", request.method, request.url.path, exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error("未处理异常: %s %s → %s", request.method, request.url.path, exc)
@@ -98,7 +120,7 @@ def health_check() -> dict[str, str]:
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
-# ── 静态文件：上传目录 ──
+# 上传文件统一通过 /api/v1/upload/{id} 端点提供，带安全响应头
+# 不再使用 StaticFiles 暴露整个目录（防止路径猜测和 SVG XSS）
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")

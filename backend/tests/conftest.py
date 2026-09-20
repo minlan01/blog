@@ -28,6 +28,16 @@ for _lim in [_auth_limiter, _comments_limiter, _messages_limiter]:
     _lim.enabled = False
 
 _test_engine = create_engine(f"sqlite:///{TEST_DB_PATH}", connect_args={"check_same_thread": False})
+
+# Enable WAL mode for test engine (FTS5 concurrent access)
+from sqlalchemy import event as _sqla_event
+@_sqla_event.listens_for(_test_engine, "connect")
+def _set_test_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=3000")
+    cursor.close()
+
 TestSession = sessionmaker(bind=_test_engine, autoflush=False, autocommit=False)
 
 
@@ -44,8 +54,18 @@ app.dependency_overrides[get_db] = _override_get_db
 
 @pytest.fixture(autouse=True)
 def _setup_and_teardown_db():
-    """Create tables and seed data for each test, then clean up."""
+    """Create tables, FTS virtual table, and seed data for each test, then clean up."""
     Base.metadata.create_all(bind=_test_engine)
+
+    # Create FTS5 virtual table for test environment (create_all doesn't handle virtual tables)
+    with _test_engine.begin() as conn:
+        conn.execute(text("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(
+                title, summary, content_text, status UNINDEXED,
+                tokenize='unicode61 remove_diacritics 2'
+            )
+        """))
+
     db = TestSession()
 
     site = SiteConfig(
@@ -78,6 +98,9 @@ def _setup_and_teardown_db():
     yield db
 
     db.close()
+    # Drop FTS table first (can't be dropped by metadata.drop_all)
+    with _test_engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS posts_fts"))
     Base.metadata.drop_all(bind=_test_engine)
 
 

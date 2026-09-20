@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -euo pipefail
 
 # ── Persist a generated SECRET_KEY so JWT tokens survive container restarts ──
 if [ -z "$SECRET_KEY" ]; then
@@ -23,5 +23,17 @@ if [ ! -f "$SEED_MARKER" ] && [ -d "/app/uploads-seed" ]; then
     touch "$SEED_MARKER"
     echo "[entrypoint] Seed images copied ($(ls /app/uploads/images/ 2>/dev/null | wc -l) files)"
 fi
+
+# ── Run database migrations (Alembic is the sole schema entry point) ──
+echo "[entrypoint] Running alembic upgrade head..."
+cd /app && alembic upgrade head || { echo "[entrypoint] FATAL: alembic upgrade failed"; exit 1; }
+
+# ── Seed data (idempotent) ──
+echo "[entrypoint] Running seed..."
+python -m app.cli seed || { echo "[entrypoint] FATAL: seed failed"; exit 1; }
+
+# ── Restrict database file permissions ──
+chmod 600 /app/data/blog.db 2>/dev/null || true
+chmod 600 /app/data/.secret_key 2>/dev/null || true
 
 exec "$@"

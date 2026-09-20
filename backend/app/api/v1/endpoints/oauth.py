@@ -1,12 +1,14 @@
 """GitHub OAuth endpoints."""
 
+import hashlib
 import secrets
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import select
 
 from app.api.v1.deps import DBSession
+from app.api.v1.endpoints.auth import _set_refresh_cookie
 from app.core.config import settings
 from app.core.security import create_access_token, create_refresh_token, hash_password
 from app.models.user import User
@@ -29,7 +31,7 @@ def github_login():
 
 
 @router.get("/callback", response_model=Token)
-async def github_callback(code: str, db: DBSession):
+async def github_callback(code: str, response: Response, db: DBSession):
     """Handle GitHub OAuth callback — exchange code for token, create/login user."""
     if not settings.GITHUB_CLIENT_ID or not settings.GITHUB_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
@@ -87,9 +89,12 @@ async def github_callback(code: str, db: DBSession):
         db.refresh(user)
 
     # Generate tokens
-    access = create_access_token(data={"sub": str(user.id)})
+    access = create_access_token(data={"sub": str(user.id)}, token_version=user.token_version)
     refresh = create_refresh_token(data={"sub": str(user.id)})
-    user.refresh_token = refresh
+    user.refresh_token_hash = hashlib.sha256(refresh.encode()).hexdigest()
     db.commit()
+
+    # refresh_token 通过 httpOnly cookie 发放（与 login 端点一致）
+    _set_refresh_cookie(response, refresh)
 
     return Token(access_token=access, refresh_token=refresh)

@@ -16,6 +16,7 @@ class PostSummary(BaseModel):
     published_at: datetime | None = None
     updated_at: datetime | None = None
     is_featured: bool
+    featured_order: int = 0
     view_count: int = 0
     status: str = Field(default="published", pattern="^(published|draft)$")
     category: CategoryRead | None = None
@@ -49,6 +50,7 @@ class PostUpdate(BaseModel):
     cover_image: str | None = None
     reading_time: str | None = None
     is_featured: bool | None = None
+    featured_order: int | None = Field(default=None, ge=0, le=999)
     category_id: int | None = None
     tag_ids: list[int] | None = None
     status: str | None = Field(default=None, pattern="^(published|draft)$")

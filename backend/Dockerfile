@@ -3,7 +3,6 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
-# Compile-time deps for bcrypt / cryptography
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc \
         libffi-dev \
@@ -17,7 +16,6 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Runtime deps: curl for healthcheck, libffi3 for bcrypt/cffi
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         libffi8 \
@@ -34,7 +32,7 @@ COPY alembic.ini alembic.ini
 COPY uploads/ /app/uploads-seed/
 COPY entrypoint.sh /entrypoint.sh
 
-# Create runtime directories with correct ownership
+# Create runtime directories
 RUN mkdir -p /app/data /app/uploads/images \
     && chown -R appuser:appuser /app /entrypoint.sh \
     && chmod +x /entrypoint.sh
@@ -50,4 +48,13 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -fsS http://localhost:8000/health || exit 1
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Gunicorn + UvicornWorker — 1 worker 省内存（2G 服务器），max-requests 防内存泄漏
+CMD ["gunicorn", "app.main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "1", \
+     "--bind", "0.0.0.0:8000", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--timeout", "300", \
+     "--max-requests", "100", \
+     "--max-requests-jitter", "20"]

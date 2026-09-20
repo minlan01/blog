@@ -12,6 +12,13 @@ class SiteProfile(BaseModel):
     location: str
     icp_filing: str = ""
     icp_link: str = ""
+    display_name: str | None = ""
+    about_role: str | None = ""
+    about_summary: str | None = ""
+    about_me: str | None = ""
+    about_project: str | None = ""
+    project_highlights: str | None = ""
+    tech_stack: str | None = ""
 
     model_config = {"from_attributes": True}
 
@@ -27,3 +34,10 @@ class SiteProfileUpdate(BaseModel):
     location: str | None = Field(default=None, max_length=120)
     icp_filing: str | None = Field(default=None, max_length=120)
     icp_link: str | None = Field(default=None, max_length=255)
+    display_name: str | None = Field(default=None, max_length=120)
+    about_role: str | None = Field(default=None, max_length=255)
+    about_summary: str | None = None
+    about_me: str | None = None
+    about_project: str | None = None
+    project_highlights: str | None = None
+    tech_stack: str | None = None

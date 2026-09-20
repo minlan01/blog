@@ -9,6 +9,8 @@ class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=2000)
     parent_id: int | None = None
     captcha_answer: int | None = None
+    captcha_token: str | None = None
+    captcha_ts: int | None = None
 
 
 class PublicMessageRead(BaseModel):
@@ -34,6 +36,7 @@ class MessageRead(BaseModel):
     parent_id: int | None = None
     admin_reply: str | None = None
     admin_reply_at: datetime | None = None
+    status: str = "pending"
     created_at: datetime
     replies: list["MessageRead"] = []
 
@@ -72,6 +75,7 @@ def message_to_read(m, include_replies: bool = False, _depth: int = 0) -> Messag
         "parent_id": m.parent_id,
         "admin_reply": m.admin_reply,
         "admin_reply_at": m.admin_reply_at,
+        "status": getattr(m, "status", "pending"),
         "created_at": m.created_at,
         "replies": [],
     }

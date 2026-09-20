@@ -221,21 +221,37 @@ def _migrate_missing_indexes() -> None:
 
 
 def init_db() -> None:
-    # First, migrate existing schema
-    _migrate_email_nullable()
-    _migrate_view_count()
-    _migrate_comment_fields()
-    _migrate_post_status()
-    _migrate_comment_user_id_nullable()
-    _migrate_image_data_mediumblob()
-    _migrate_image_object_storage_fields()
-    _migrate_message_reply_fields()
-    _migrate_user_auth_fields()
-    _migrate_post_revision_table()
-    _migrate_missing_indexes()
+    """Initialize database for development/test only.
 
-    # Then create any missing tables
+    In production, Alembic is the sole schema migration path.
+    This function is only called when ENV=test or ENV=development.
+    """
+    from app.core.config import settings
+
+    if settings.ENV not in ("test", "development"):
+        # Production: Alembic handles everything
+        with SessionLocal() as db:
+            seed_database(db)
+        return
+
+    # Dev/test: run Alembic first, then create_all as safety net
+    import subprocess
+    try:
+        subprocess.run(["alembic", "upgrade", "head"], check=True)
+    except Exception:
+        pass  # If alembic fails (e.g. already at head), continue
+
+    # Create any missing tables (dev/test safety net)
     Base.metadata.create_all(bind=engine)
+
+    # Stamp alembic version so future upgrades don't replay migrations
+    try:
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config("alembic.ini")
+        command.stamp(alembic_cfg, "head")
+    except Exception:
+        pass  # Already stamped or no alembic.ini
 
     with SessionLocal() as db:
         seed_database(db)

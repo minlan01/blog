@@ -22,6 +22,18 @@ class FriendLinkBase(BaseModel):
             raise ValueError('URL must start with http://, https://, or /')
         return v
 
+    @field_validator('avatar')
+    @classmethod
+    def avatar_must_be_safe(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        if v.lower().startswith(('javascript:', 'vbscript:')):
+            raise ValueError('Avatar must not use javascript: or vbscript: protocol')
+        if v and not v.lower().startswith(('http://', 'https://', '/')):
+            raise ValueError('Avatar must start with http://, https://, or /')
+        return v
+
 
 class FriendLinkCreate(FriendLinkBase):
     pass

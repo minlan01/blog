@@ -89,17 +89,18 @@ def _send_email(to: str, subject: str, body: str) -> bool:
         return False
 
 
-def _generate_token(user_id: int, purpose: str, expire_minutes: int = 60) -> str:
+def _generate_token(user_id: int, purpose: str, expire_minutes: int = 60, token_version: int = 0) -> str:
     from datetime import timedelta
     return create_purpose_token(
         data={"sub": str(user_id)},
         purpose=purpose,
         expires_delta=timedelta(minutes=expire_minutes),
+        token_version=token_version,
     )
 
 
 def send_password_reset_email(user, db) -> None:
-    token = _generate_token(user.id, "password_reset", expire_minutes=30)
+    token = _generate_token(user.id, "password_reset", expire_minutes=30, token_version=user.token_version)
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
 
     body = f"""

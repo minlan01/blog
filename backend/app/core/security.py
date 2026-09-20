@@ -18,9 +18,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None, token_version: int = 0) -> str:
     to_encode = data.copy()
     to_encode["type"] = "access"
+    to_encode["ver"] = token_version
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -36,10 +37,11 @@ def create_refresh_token(data: dict) -> str:
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_purpose_token(data: dict, purpose: str, expires_delta: timedelta) -> str:
+def create_purpose_token(data: dict, purpose: str, expires_delta: timedelta, token_version: int = 0) -> str:
     to_encode = data.copy()
     to_encode["type"] = "access"
     to_encode["purpose"] = purpose
+    to_encode["ver"] = token_version
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)

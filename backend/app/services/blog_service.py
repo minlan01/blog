@@ -35,6 +35,8 @@ class BlogService:
     _SITE_WRITABLE_FIELDS = {
         "site_name", "hero_title", "hero_subtitle", "intro_text",
         "avatar", "email", "github_url", "location", "icp_filing", "icp_link",
+        "display_name", "about_role", "about_summary", "about_me",
+        "about_project", "project_highlights", "tech_stack",
     }
 
     _CATEGORY_WRITABLE_FIELDS = {"name", "slug", "description"}
@@ -42,7 +44,8 @@ class BlogService:
     _TAG_WRITABLE_FIELDS = {"name", "slug", "description"}
 
     def update_site_profile(self, data: dict) -> SiteConfig | None:
-        profile = self.get_site_profile()
+        # 直接从当前 session 查询，不用缓存的 detached 对象
+        profile = self.db.scalar(select(SiteConfig).limit(1))
         if not profile:
             return None
         for key, value in data.items():
@@ -68,7 +71,7 @@ class BlogService:
             select(Post)
             .options(joinedload(Post.category), joinedload(Post.tags))
             .where(Post.status == "published")
-            .order_by(Post.published_at.desc())
+            .order_by(Post.is_featured.desc(), Post.featured_order.desc(), Post.published_at.desc())
         )
         if featured is True:
             stmt = stmt.where(Post.is_featured.is_(True))
@@ -147,6 +150,7 @@ class BlogService:
             tags=tags,
         )
         self.db.add(post)
+        self.db.flush()  # flush to get post.id before saving revision
         self._save_revision(post)
         self.db.commit()
         self.db.refresh(post)
@@ -156,7 +160,7 @@ class BlogService:
 
     _POST_WRITABLE_FIELDS = {
         "title", "slug", "summary", "content_markdown", "cover_image",
-        "reading_time", "is_featured", "category_id", "status", "published_at",
+        "reading_time", "is_featured", "featured_order", "category_id", "status", "published_at",
     }
 
     def update_post(self, post_id: int, data: dict, tag_ids: list[int] | None = None) -> Post | None:
@@ -334,6 +338,13 @@ class BlogService:
     # ────────────── Search & Pagination ──────────────
 
     def search_posts(self, query: str, limit: int = 50) -> list[Post]:
+        """[DEPRECATED] Legacy ilike search. Use FTS5 via /posts?search= instead.
+
+        Kept for backward compatibility but FTS5 is the current search path.
+        Will be removed in a future version.
+        """
+        import warnings
+        warnings.warn("search_posts() is deprecated, use FTS5 via API layer", DeprecationWarning, stacklevel=2)
         search_term = f"%{query}%"
         stmt = (
             select(Post)
@@ -367,7 +378,12 @@ class BlogService:
         comment = self.db.get(Comment, comment_id)
         if not comment:
             return False
-        descendant_ids = self._collect_comment_descendant_ids(comment_id)
+        from app.utils.tree import collect_descendant_ids
+        from app.models.comment import Comment
+        def _get_children(cid):
+            children = list(self.db.scalars(select(Comment).where(Comment.parent_id == cid)).all())
+            return [(c.id,) for c in children]
+        descendant_ids = collect_descendant_ids(comment_id, _get_children)
         for cid in reversed(descendant_ids):
             c = self.db.get(Comment, cid)
             if c:
@@ -375,12 +391,3 @@ class BlogService:
         self.db.delete(comment)
         self.db.commit()
         return True
-
-    def _collect_comment_descendant_ids(self, comment_id: int) -> list[int]:
-        from app.models.comment import Comment
-        ids: list[int] = []
-        children = list(self.db.scalars(select(Comment).where(Comment.parent_id == comment_id)).all())
-        for child in children:
-            ids.append(child.id)
-            ids.extend(self._collect_comment_descendant_ids(child.id))
-        return ids

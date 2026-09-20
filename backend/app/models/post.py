@@ -24,6 +24,7 @@ class Post(Base):
     content_markdown: Mapped[str] = mapped_column(Text, nullable=False)
     reading_time: Mapped[str] = mapped_column(String(32), default="5 min")
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
+    featured_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     published_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, default=None, onupdate=lambda: datetime.now(timezone.utc))
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)

@@ -18,3 +18,12 @@ class SiteConfig(Base):
     location: Mapped[str] = mapped_column(String(120), nullable=False)
     icp_filing: Mapped[str] = mapped_column(String(120), default="")
     icp_link: Mapped[str] = mapped_column(String(255), default="")
+
+    # About page editable content
+    display_name: Mapped[str] = mapped_column(String(120), default="", nullable=True)
+    about_role: Mapped[str] = mapped_column(String(255), default="", nullable=True)
+    about_summary: Mapped[str] = mapped_column(Text, default="", nullable=True)
+    about_me: Mapped[str] = mapped_column(Text, default="", nullable=True)
+    about_project: Mapped[str] = mapped_column(Text, default="", nullable=True)
+    project_highlights: Mapped[str] = mapped_column(Text, default="", nullable=True)
+    tech_stack: Mapped[str] = mapped_column(Text, default="", nullable=True)

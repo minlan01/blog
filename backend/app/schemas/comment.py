@@ -44,5 +44,9 @@ def comment_to_read(c, include_replies: bool = False, _depth: int = 0) -> Commen
     }
     cr = CommentRead.model_validate(data)
     if include_replies and c.replies and _depth < 3:
-        cr.replies = [comment_to_read(r, include_replies=True, _depth=_depth + 1) for r in c.replies if r.id != c.id]
+        cr.replies = [
+            comment_to_read(r, include_replies=True, _depth=_depth + 1)
+            for r in c.replies
+            if r.id != c.id and r.is_approved
+        ]
     return cr

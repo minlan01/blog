@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import joinedload
 
 from app.api.v1.deps import DBSession, SuperAdmin
@@ -29,23 +29,15 @@ from app.schemas.tag import TagCreate, TagRead, TagUpdate
 from app.schemas.user import UserRead
 from app.schemas.user import AdminUserUpdate
 from app.services.blog_service import BlogService
+from app.utils.tree import collect_descendant_ids
 
-def _collect_comment_descendant_ids(db, comment_id: int) -> list[int]:
-    ids: list[int] = []
+def _get_comment_children(db, comment_id: int) -> list[tuple[int]]:
     children = list(db.scalars(select(Comment).where(Comment.parent_id == comment_id)).all())
-    for child in children:
-        ids.append(child.id)
-        ids.extend(_collect_comment_descendant_ids(db, child.id))
-    return ids
+    return [(c.id,) for c in children]
 
-
-def _collect_message_descendant_ids(db, message_id: int) -> list[int]:
-    ids: list[int] = []
+def _get_message_children(db, message_id: int) -> list[tuple[int]]:
     children = list(db.scalars(select(Message).where(Message.parent_id == message_id)).all())
-    for child in children:
-        ids.append(child.id)
-        ids.extend(_collect_message_descendant_ids(db, child.id))
-    return ids
+    return [(c.id,) for c in children]
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -83,7 +75,12 @@ def create_post(body: PostCreate, db: DBSession, _admin: SuperAdmin):
         if not cat:
             raise HTTPException(status_code=400, detail=f"Category {body.category_id} not found")
     data = body.model_dump(exclude={"tag_ids"})
-    return service.create_post(data, body.tag_ids)
+    try:
+        return service.create_post(data, body.tag_ids)
+    except Exception as e:
+        if "UNIQUE constraint failed" in str(e) and "slug" in str(e):
+            raise HTTPException(status_code=409, detail=f"slug '{body.slug}' already exists")
+        raise
 
 
 @router.put("/posts/{post_id}", response_model=PostDetail)
@@ -183,10 +180,33 @@ def update_user(user_id: int, body: AdminUserUpdate, db: DBSession, _admin: Supe
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
+
+    # ── 角色保护规则 ──
+    # 1. 禁止修改 super_admin 的角色（minlan01 是唯一的超级管理员，锁死）
+    # 2. 禁止把任何人提升为 super_admin（系统只允许存在一个超级管理员）
+    data = body.model_dump(exclude_unset=True)
+    if "role" in data:
+        if user.role == "super_admin":
+            raise HTTPException(status_code=403, detail="超级管理员角色不可修改")
+        if data["role"] == "super_admin":
+            raise HTTPException(status_code=403, detail="系统只允许一个超级管理员，不能提升其他用户")
+
     _USER_WRITABLE_FIELDS = {"role", "bio", "avatar"}
-    for key, value in body.model_dump(exclude_unset=True).items():
+    for key, value in data.items():
         if key in _USER_WRITABLE_FIELDS and value is not None:
             setattr(user, key, value)
+    # Admin-initiated password reset: bypass old_password check, but still
+    # enforce complexity and revoke all sessions.
+    if data.get("new_password"):
+        from app.core.security import hash_password, validate_password_strength
+        errors = validate_password_strength(data["new_password"])
+        if errors:
+            raise HTTPException(status_code=422, detail=errors)
+        user.password_hash = hash_password(data["new_password"])
+        user.must_change_password = False
+        user.refresh_token_hash = None
+        # 原子递增 token_version
+        db.execute(update(User).where(User.id == user.id).values(token_version=User.token_version + 1))
     db.commit()
     db.refresh(user)
     return user
@@ -235,7 +255,7 @@ def admin_delete_comment(comment_id: int, db: DBSession, _admin: SuperAdmin):
     comment = db.get(Comment, comment_id)
     if not comment:
         raise HTTPException(status_code=404, detail="评论不存在")
-    descendant_ids = _collect_comment_descendant_ids(db, comment_id)
+    descendant_ids = collect_descendant_ids(comment_id, lambda cid: _get_comment_children(db, cid))
     for cid in reversed(descendant_ids):
         c = db.get(Comment, cid)
         if c:
@@ -262,6 +282,23 @@ def reply_message(message_id: int, body: AdminReplyCreate, db: DBSession, _admin
         raise HTTPException(status_code=404, detail="留言不存在")
     msg.admin_reply = body.content
     msg.admin_reply_at = datetime.now(timezone.utc)
+    # 管理员回复时自动通过该留言
+    msg.status = "approved"
+    db.commit()
+    db.refresh(msg)
+    return message_to_read(msg)
+
+
+@router.put("/messages/{message_id}/status", response_model=MessageRead)
+def update_message_status(message_id: int, body: dict, db: DBSession, _admin: SuperAdmin):
+    """审核留言：approve / reject"""
+    msg = db.get(Message, message_id)
+    if not msg:
+        raise HTTPException(status_code=404, detail="留言不存在")
+    new_status = body.get("status")
+    if new_status not in ("pending", "approved", "rejected"):
+        raise HTTPException(status_code=400, detail="无效的审核状态")
+    msg.status = new_status
     db.commit()
     db.refresh(msg)
     return message_to_read(msg)
@@ -272,7 +309,7 @@ def admin_delete_message(message_id: int, db: DBSession, _admin: SuperAdmin):
     msg = db.get(Message, message_id)
     if not msg:
         raise HTTPException(status_code=404, detail="留言不存在")
-    descendant_ids = _collect_message_descendant_ids(db, message_id)
+    descendant_ids = collect_descendant_ids(message_id, lambda mid: _get_message_children(db, mid))
     for mid in reversed(descendant_ids):
         m = db.get(Message, mid)
         if m:
@@ -345,6 +382,7 @@ def restore_post_revision(post_id: int, rev_id: int, db: DBSession, _admin: Supe
 def batch_delete_posts(body: BatchDeleteRequest, db: DBSession, _admin: SuperAdmin):
     from app.models.comment import Comment
     from app.models.post_revision import PostRevision
+    from app.services.fts_sync import fts_batch_delete
     db.query(PostRevision).filter(PostRevision.post_id.in_(body.ids)).delete(synchronize_session=False)
     db.query(Comment).filter(
         Comment.post_id.in_(body.ids),
@@ -352,6 +390,8 @@ def batch_delete_posts(body: BatchDeleteRequest, db: DBSession, _admin: SuperAdm
     ).delete(synchronize_session=False)
     db.query(Comment).filter(Comment.post_id.in_(body.ids)).delete(synchronize_session=False)
     db.query(Post).filter(Post.id.in_(body.ids)).delete(synchronize_session=False)
+    # FTS bypass: explicit DELETE required because Query.delete() skips ORM events
+    fts_batch_delete(db.connection(), list(body.ids))
     db.commit()
     cache_delete("posts:")
     cache_delete("stats:")
@@ -421,6 +461,14 @@ async def import_posts(_admin: SuperAdmin, db: DBSession, file: UploadFile = Fil
     service = BlogService(db)
 
     with zipfile.ZipFile(io.BytesIO(content)) as zf:
+        # 解压炸弹防护：检查总解压大小和文件数
+        infos = zf.infolist()
+        total_uncompressed = sum(i.file_size for i in infos)
+        if total_uncompressed > 100 * 1024 * 1024:  # 100MB 上限
+            raise HTTPException(status_code=413, detail="压缩包解压后总大小超过 100MB 限制")
+        if len(infos) > 200:
+            raise HTTPException(status_code=400, detail="压缩包内文件数量超过 200 个限制")
+
         for name in zf.namelist():
             if not name.endswith('.md'):
                 continue
@@ -523,7 +571,7 @@ def reject_comment(comment_id: int, db: DBSession, _admin: SuperAdmin):
     comment = db.get(Comment, comment_id)
     if not comment:
         raise HTTPException(status_code=404, detail="评论不存在")
-    descendant_ids = _collect_comment_descendant_ids(db, comment_id)
+    descendant_ids = collect_descendant_ids(comment_id, lambda cid: _get_comment_children(db, cid))
     for cid in reversed(descendant_ids):
         c = db.get(Comment, cid)
         if c:

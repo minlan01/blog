@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "Personal Blog API"
+    APP_NAME: str = "赤夜冥岚的编程小屋 API"
     API_V1_PREFIX: str = "/api/v1"
     CORS_ORIGINS: str = "http://127.0.0.1:3710,http://localhost:3710"
     DATABASE_BACKEND: str = "sqlite"
@@ -42,7 +42,8 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 1024
     UPLOAD_ALLOWED_TYPES: str = (
         "image/png,image/jpeg,image/gif,image/webp,image/svg+xml,"
-        "video/mp4,video/webm,video/quicktime,video/x-matroska"
+        "video/mp4,video/webm,video/quicktime,video/x-matroska,"
+        "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/mp4,audio/x-m4a,audio/ogg,audio/webm"
     )
 
     # Object storage
@@ -53,11 +54,31 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = "blog-media"
     MINIO_SECURE: bool = False
 
+    # Environment
+    ENV: str = "production"  # "production" | "development" | "test"
+
+    # Site URL (for sitemap, canonical, OG meta)
+    SITE_URL: str = "http://localhost:3710"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @cached_property
     def cors_origins_list(self) -> list[str]:
         return [item.strip() for item in self.CORS_ORIGINS.split(",") if item.strip()]
+
+    @property
+    def cors_is_secure(self) -> bool:
+        """生产环境 CORS 安全检查：不应包含通配符或 localhost"""
+        origins = self.cors_origins_list
+        if not origins or "*" in origins:
+            return False
+        for o in origins:
+            low = o.lower()
+            if "localhost" in low or "127.0.0.1" in low or "0.0.0.0" in low:
+                return False
+            if not low.startswith("https://"):
+                return False
+        return True
 
     @cached_property
     def database_url(self) -> str:
@@ -98,3 +119,10 @@ if not settings.SECRET_KEY:
             "Please add SECRET_KEY=<your-secret> to your .env file. "
             "You can generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
         )
+
+# 生产环境 CORS 安全校验
+if settings.ENV == "production" and not settings.cors_is_secure:
+    warnings.warn(
+        f"[Security] 生产环境 CORS_ORIGINS 不安全: {settings.CORS_ORIGINS}. "
+        "应只包含 https:// 开头的生产域名，不包含 localhost/通配符。"
+    )

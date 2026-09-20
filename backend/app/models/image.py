@@ -19,6 +19,7 @@ class Image(Base):
     storage_backend: Mapped[str] = mapped_column(String(32), default="local")
     media_type: Mapped[str] = mapped_column(String(20), default="image")
     size: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_by: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )

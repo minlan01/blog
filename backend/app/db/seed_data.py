@@ -17,7 +17,8 @@ def _get_admin_password() -> str:
     if pwd:
         return pwd
     pwd = secrets.token_hex(8)
-    _logger.warning("ADMIN_DEFAULT_PASSWORD not set. Generated admin password: %s", pwd)
+    _logger.warning("ADMIN_DEFAULT_PASSWORD not set. Generated a random password. Check startup logs only.")
+    # 安全考虑：不在日志中记录明文密码
     return pwd
 
 
@@ -75,7 +76,7 @@ def seed_database(db: Session) -> None:
 
     # ── 站点配置 ──
     site = SiteConfig(
-        site_name="minlan01",
+        site_name="赤夜冥岚的编程小屋",
         hero_title="SYSTEM ONLINE\nACCESS GRANTED",
         hero_subtitle="// Terminal blog system ready.",
         intro_text="Engineer, design enthusiast. Building with code, recording thoughts with words.",

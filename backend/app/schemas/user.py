@@ -40,6 +40,7 @@ class AdminUserUpdate(BaseModel):
     role: str | None = Field(default=None, pattern="^(user|super_admin)$")
     bio: str | None = None
     avatar: str | None = Field(default=None, max_length=500)
+    new_password: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class Token(BaseModel):
